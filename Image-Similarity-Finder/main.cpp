@@ -13,6 +13,9 @@
 
 using namespace std;
 
+/* --------------------------------------------------------------------- */
+/* Enumerations                                                          */
+
 enum Color {
     RED     = 0,
     GREEN   = 1,
@@ -27,8 +30,14 @@ enum DivisionType {
     FIVE_BY_FIVE    = 25
 };
 
+/* --------------------------------------------------------------------- */
+/* Constants                                                             */
+
 const DivisionType numberOfDivisions = TWO_BY_TWO;
 const int numberOfImages = 1000;
+
+/* --------------------------------------------------------------------- */
+/* Structs                                                               */
 
 typedef struct HistogramElement
 {
@@ -63,7 +72,10 @@ typedef struct Point2D_INT
 }
 Point2D_INT;
 
-void getDivisionLimits(IplImage *image, DivisionLimits imageDivisions) {
+/* --------------------------------------------------------------------- */
+/* Functions                                                             */
+
+void getDivisionLimits(IplImage *image, DivisionLimits *imageDivisions) {
     int sqrtDivisions = sqrt((double) numberOfDivisions);
     int heightStep = (image->height)/sqrtDivisions;
     int widthStep = (image->width)/sqrtDivisions;
@@ -71,7 +83,7 @@ void getDivisionLimits(IplImage *image, DivisionLimits imageDivisions) {
     for (int i = 0; i < sqrtDivisions; i++) {
         for (int j = 0; j < sqrtDivisions; j++) {
             divisionNumber++;
-            imageDivisions.limits.push_back(DivisionElements(divisionNumber, i*heightStep, j*widthStep, (i+1)*heightStep, (j+1)*widthStep));
+            imageDivisions->limits.push_back(DivisionElements(divisionNumber, i*heightStep, j*widthStep, (i+1)*heightStep, (j+1)*widthStep));
         }
     }
 }
@@ -97,11 +109,11 @@ int getDivisionNumber(DivisionLimits *imageDivisions, Point2D_INT *pixelPosition
     return divisionNumber;
 }
 
-void populateHistogram(vector<vector<HistogramElement> > histogram, DivisionLimits *imageDivisions, CvScalar *sc, Point2D_INT *pixelPosition) {
+void populateHistogram(vector<vector<HistogramElement> > *histogram, DivisionLimits *imageDivisions, CvScalar *sc, Point2D_INT *pixelPosition) {
     int divisionNumber = getDivisionNumber(imageDivisions, pixelPosition);
     for (int c = 0; c < 3; c++) {
         HistogramElement histElem(Color(c), sc->val[c]);
-        histogram.at(divisionNumber).push_back(histElem);
+        histogram->at(divisionNumber).push_back(histElem);
     }
 }
 
@@ -119,13 +131,13 @@ int main(int argc, char const *argv[]) {
         imagePath = oss.str();
         currentImage = cvLoadImage(imagePath.c_str(), CV_LOAD_IMAGE_COLOR);
         
-        getDivisionLimits(currentImage, imageDivisions);
+        getDivisionLimits(currentImage, &imageDivisions);
         
         for (int x = 0; x < currentImage->height; x++) {
             for (int y = 0; y < currentImage->width; y++) {
                 sc = cvGet2D(currentImage, x, y);
                 Point2D_INT pixelPosition(x, y);
-                populateHistogram(histogram, &imageDivisions, &sc, &pixelPosition);
+                populateHistogram(&histogram, &imageDivisions, &sc, &pixelPosition);
             }
         }
     }
