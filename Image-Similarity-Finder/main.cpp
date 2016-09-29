@@ -32,8 +32,9 @@ const int numberOfImages = 1000;
 
 typedef struct HistogramElement
 {
-    Color c;
+    Color color;
     float value;
+    HistogramElement (Color c, float v) : color(c), value(v) {};
 }
 HistogramElement;
 
@@ -98,7 +99,8 @@ int getDivisionNumber(DivisionLimits *imageDivisions, Point2D_INT *pixelPosition
 
 void populateHistogram(vector<vector<HistogramElement> > histogram, DivisionLimits *imageDivisions, CvScalar *sc, Point2D_INT *pixelPosition) {
     int divisionNumber = getDivisionNumber(imageDivisions, pixelPosition);
-    // Implementation...
+    HistogramElement histElem(RED, sc->val[0]);
+    histogram.at(divisionNumber).push_back(histElem);
 }
 
 int main(int argc, char const *argv[]) {
@@ -120,7 +122,7 @@ int main(int argc, char const *argv[]) {
         for (int x = 0; x < currentImage->height; x++) {
             for (int y = 0; y < currentImage->width; y++) {
                 sc = cvGet2D(currentImage, x, y);
-                Point2D_INT pixelPosition = Point2D_INT(x, y);
+                Point2D_INT pixelPosition(x, y);
                 populateHistogram(histogram, &imageDivisions, &sc, &pixelPosition);
             }
         }
