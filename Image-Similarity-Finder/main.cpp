@@ -37,9 +37,19 @@ typedef struct HistogramElement
 }
 HistogramElement;
 
+typedef struct DivisionElements
+{
+    int startX;
+    int startY;
+    int endX;
+    int endY;
+    DivisionElements (int sX, int sY, int eX, int eY) : startX(sX), startY(sY), endX(eX), endY(eY) {};
+}
+DivisionElements;
+
 typedef struct DivisionLimits
 {
-    vector<tuple<int, int> > limits;
+    vector<DivisionElements > limits{numberOfDivisions};
 }
 DivisionLimits;
 
@@ -47,17 +57,21 @@ void getDivisionLimits(IplImage *image, DivisionLimits imageDivisions) {
     int sqrtDivisions = sqrt((double) numberOfDivisions);
     int heightStep = (image->height)/sqrtDivisions;
     int widthStep = (image->width)/sqrtDivisions;
-    imageDivisions.limits.push_back(make_tuple(0,0));
-    for (int i = 1; i < sqrtDivisions; i++) {
-        for (int j = 1; j < sqrtDivisions; j++) {
-            imageDivisions.limits.push_back(make_tuple(i*heightStep, j*widthStep));
+    for (int i = 0; i < sqrtDivisions; i++) {
+        for (int j = 0; j < sqrtDivisions; j++) {
+            imageDivisions.limits.push_back(DivisionElements(i*heightStep, j*widthStep, (i+1)*heightStep, (j+1)*widthStep));
         }
     }
-    imageDivisions.limits.push_back(make_tuple(image->height, image->width));
 }
 
-void populateHistogram(vector<vector<HistogramElement> > histogram, DivisionLimits *divisionLimits, CvScalar *sc, int i, int j) {
-    
+int getDivision(DivisionLimits *imageDivisions, int x, int y) {
+    // Implementation...
+    return 0;
+}
+
+void populateHistogram(vector<vector<HistogramElement> > histogram, DivisionLimits *imageDivisions, CvScalar *sc, int x, int y) {
+    int divisionNumber = getDivision(imageDivisions, x, y);
+    // Implementation...
 }
 
 int main(int argc, char const *argv[]) {
@@ -76,10 +90,10 @@ int main(int argc, char const *argv[]) {
         
         getDivisionLimits(currentImage, imageDivisions);
         
-        for (int i = 0; i < currentImage->height; i++) {
-            for (int j = 0; j < currentImage->width; j++) {
-                sc = cvGet2D(currentImage, i, j);
-                populateHistogram(histogram, &imageDivisions, &sc, i, j);
+        for (int x = 0; i < currentImage->height; x++) {
+            for (int y = 0; j < currentImage->width; y++) {
+                sc = cvGet2D(currentImage, x, y);
+                populateHistogram(histogram, &imageDivisions, &sc, x, y);
             }
         }
     }
