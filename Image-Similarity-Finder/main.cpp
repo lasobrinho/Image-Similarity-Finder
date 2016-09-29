@@ -39,11 +39,12 @@ HistogramElement;
 
 typedef struct DivisionElements
 {
+    int divisionNumber;
     int startX;
     int startY;
     int endX;
     int endY;
-    DivisionElements (int sX, int sY, int eX, int eY) : startX(sX), startY(sY), endX(eX), endY(eY) {};
+    DivisionElements (int dN, int sX, int sY, int eX, int eY) : divisionNumber(dN), startX(sX), startY(sY), endX(eX), endY(eY) {};
 }
 DivisionElements;
 
@@ -53,24 +54,50 @@ typedef struct DivisionLimits
 }
 DivisionLimits;
 
+typedef struct Point2D_INT
+{
+    int X;
+    int Y;
+    Point2D_INT (int pX, int pY) : X(pX), Y(pY) {};
+}
+Point2D_INT;
+
 void getDivisionLimits(IplImage *image, DivisionLimits imageDivisions) {
     int sqrtDivisions = sqrt((double) numberOfDivisions);
     int heightStep = (image->height)/sqrtDivisions;
     int widthStep = (image->width)/sqrtDivisions;
+    int divisionNumber = 0;
     for (int i = 0; i < sqrtDivisions; i++) {
         for (int j = 0; j < sqrtDivisions; j++) {
-            imageDivisions.limits.push_back(DivisionElements(i*heightStep, j*widthStep, (i+1)*heightStep, (j+1)*widthStep));
+            divisionNumber++;
+            imageDivisions.limits.push_back(DivisionElements(divisionNumber, i*heightStep, j*widthStep, (i+1)*heightStep, (j+1)*widthStep));
         }
     }
 }
 
-int getDivision(DivisionLimits *imageDivisions, int x, int y) {
-    // Implementation...
-    return 0;
+bool isInDivision(Point2D_INT *pixelPosition, DivisionElements *divElem) {
+    if (pixelPosition->X >= divElem->startX &&
+        pixelPosition->X <  divElem->endX   &&
+        pixelPosition->Y <= divElem->startY &&
+        pixelPosition->Y <  divElem->endY)
+    {
+        return true;
+    }
+    return false;
 }
 
-void populateHistogram(vector<vector<HistogramElement> > histogram, DivisionLimits *imageDivisions, CvScalar *sc, int x, int y) {
-    int divisionNumber = getDivision(imageDivisions, x, y);
+int getDivisionNumber(DivisionLimits *imageDivisions, Point2D_INT *pixelPosition) {
+    int divisionNumber = 0;
+    for (DivisionElements divElem : imageDivisions->limits) {
+        if (isInDivision(pixelPosition, &divElem)) {
+            divisionNumber = divElem.divisionNumber;
+        }
+    }
+    return divisionNumber;
+}
+
+void populateHistogram(vector<vector<HistogramElement> > histogram, DivisionLimits *imageDivisions, CvScalar *sc, Point2D_INT *pixelPosition) {
+    int divisionNumber = getDivisionNumber(imageDivisions, pixelPosition);
     // Implementation...
 }
 
@@ -90,10 +117,11 @@ int main(int argc, char const *argv[]) {
         
         getDivisionLimits(currentImage, imageDivisions);
         
-        for (int x = 0; i < currentImage->height; x++) {
-            for (int y = 0; j < currentImage->width; y++) {
+        for (int x = 0; x < currentImage->height; x++) {
+            for (int y = 0; y < currentImage->width; y++) {
                 sc = cvGet2D(currentImage, x, y);
-                populateHistogram(histogram, &imageDivisions, &sc, x, y);
+                Point2D_INT pixelPosition = Point2D_INT(x, y);
+                populateHistogram(histogram, &imageDivisions, &sc, &pixelPosition);
             }
         }
     }
