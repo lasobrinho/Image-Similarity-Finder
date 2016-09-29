@@ -99,8 +99,10 @@ int getDivisionNumber(DivisionLimits *imageDivisions, Point2D_INT *pixelPosition
 
 void populateHistogram(vector<vector<HistogramElement> > histogram, DivisionLimits *imageDivisions, CvScalar *sc, Point2D_INT *pixelPosition) {
     int divisionNumber = getDivisionNumber(imageDivisions, pixelPosition);
-    HistogramElement histElem(RED, sc->val[0]);
-    histogram.at(divisionNumber).push_back(histElem);
+    for (int c = 0; c < 3; c++) {
+        HistogramElement histElem(Color(c), sc->val[c]);
+        histogram.at(divisionNumber).push_back(histElem);
+    }
 }
 
 int main(int argc, char const *argv[]) {
