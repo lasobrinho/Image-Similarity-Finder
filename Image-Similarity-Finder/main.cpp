@@ -165,6 +165,17 @@ void normalizeHistogram(vector<vector<vector<float>>> *histogram, DivisionLimits
     }
 }
 
+void buildColorPercentile(vector<vector<vector<float>>> *histogram, IplImage *currentImage, DivisionLimits *imageDivisions, CvScalar *sc) {
+    getDivisionLimits(currentImage, imageDivisions);
+    for (int x = 0; x < currentImage->width; x++) {
+        for (int y = 0; y < currentImage->height; y++) {
+            *sc = cvGet2D(currentImage, y, x);
+            Point2D_INT pixelPosition(x, y);
+            populateHistogram(histogram, imageDivisions, sc, &pixelPosition);
+        }
+    }
+    normalizeHistogram(histogram, imageDivisions);
+}
 
 int main(int argc, char const *argv[]) {
     
@@ -185,19 +196,13 @@ int main(int argc, char const *argv[]) {
         imagePath = oss.str();
         currentImage = cvLoadImage(imagePath.c_str(), CV_LOAD_IMAGE_COLOR);
         
-        getDivisionLimits(currentImage, &imageDivisions);
-        
-        for (int x = 0; x < currentImage->width; x++) {
-            for (int y = 0; y < currentImage->height; y++) {
-                sc = cvGet2D(currentImage, y, x);
-                Point2D_INT pixelPosition(x, y);
-                populateHistogram(&histogram, &imageDivisions, &sc, &pixelPosition);
-            }
-        }
-        
-        normalizeHistogram(&histogram, &imageDivisions);
+        // Functions calls to build color histogram and percentile
+        buildColorPercentile(&histogram, currentImage, &imageDivisions, &sc);
         saveHistogramToFile(&histogram, outputFile, &image);
         clearHistogram(&histogram);
+        
+        
+        
         oss.str(string());
     }
     
