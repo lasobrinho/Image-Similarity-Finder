@@ -35,7 +35,7 @@ enum DivisionType {
 /* Constants                                                             */
 
 const DivisionType numberOfDivisions = TWO_BY_TWO;
-const int numberOfImages = 1000;
+const int numberOfImages = 3;
 
 /* --------------------------------------------------------------------- */
 /* Structs                                                               */
@@ -120,9 +120,7 @@ void populateHistogram(vector<vector<HistogramElement> > *histogram, DivisionLim
     }
 }
 
-void saveHistogramToFile(vector<vector<HistogramElement> > *histogram, ofstream outputFile, int *image) {
-    
-    
+void saveHistogramToFile(vector<vector<HistogramElement> > *histogram, ofstream& outputFile, int *image) {
     outputFile << endl;
     outputFile << *image << ".jpg" << endl;
     int divisionNumber = 0;
@@ -134,8 +132,6 @@ void saveHistogramToFile(vector<vector<HistogramElement> > *histogram, ofstream 
         }
         outputFile << endl;
     }
-    
-    
 }
 
 void removeOldHistogramFile(string *outputFileName) {
@@ -146,6 +142,13 @@ void removeOldHistogramFile(string *outputFileName) {
         remove(outputFileName->c_str());
     }
 }
+
+void clearHistogram(vector<vector<HistogramElement> > *histogram) {
+    for (vector<HistogramElement> histElem : *histogram) {
+        histElem.clear();
+    }
+}
+
 
 int main(int argc, char const *argv[]) {
     
@@ -160,7 +163,7 @@ int main(int argc, char const *argv[]) {
     removeOldHistogramFile(&outputFileName);
     ofstream outputFile;
     outputFile.open(outputFileName, ios::app);
-
+    
     for (int image = 0; image < numberOfImages; image++) {
         oss << "/Users/lucas/Documents/Fall 2016/opencv_images/" << image << ".jpg";
         imagePath = oss.str();
@@ -177,7 +180,8 @@ int main(int argc, char const *argv[]) {
         }
         
         saveHistogramToFile(&histogram, outputFile, &image);
-        histogram.clear();
+        clearHistogram(&histogram);
+        oss.str(string());
     }
     
     outputFile.close();
