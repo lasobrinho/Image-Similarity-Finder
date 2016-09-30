@@ -17,12 +17,6 @@ using namespace std;
 /* --------------------------------------------------------------------- */
 /* Enumerations                                                          */
 
-enum Color {
-    RED     = 0,
-    GREEN   = 1,
-    BLUE    = 2
-};
-
 enum DivisionType {
     ONE_BY_TWO      = 2,
     TWO_BY_TWO      = 4,
@@ -35,19 +29,11 @@ enum DivisionType {
 /* Constants                                                             */
 
 const DivisionType numberOfDivisions = TWO_BY_TWO;
-const int numberOfImages = 3;
+const int numberOfImages = 1000;
+const int precision = 256;
 
 /* --------------------------------------------------------------------- */
 /* Structs                                                               */
-
-typedef struct HistogramElement
-{
-    Color color;
-    float value;
-    float normalizedValue;
-    HistogramElement (Color c, float v, float nV) : color(c), value(v), normalizedValue(nV) {};
-}
-HistogramElement;
 
 typedef struct DivisionElements
 {
@@ -112,25 +98,37 @@ int getDivisionNumber(DivisionLimits *imageDivisions, Point2D_INT *pixelPosition
     return 0;
 }
 
-void populateHistogram(vector<vector<HistogramElement> > *histogram, DivisionLimits *imageDivisions, CvScalar *sc, Point2D_INT *pixelPosition) {
+void populateHistogram(vector<vector<vector<float>>> *histogram,
+                       DivisionLimits *imageDivisions,
+                       CvScalar *sc,
+                       Point2D_INT *pixelPosition)
+{
     int divisionNumber = getDivisionNumber(imageDivisions, pixelPosition);
     for (int c = 0; c < 3; c++) {
-        HistogramElement histElem(Color(c), sc->val[c], sc->val[c]/imageDivisions->pixelsByDivision);
-        histogram->at(divisionNumber).push_back(histElem);
+        histogram->at(divisionNumber).at(c).at((int) sc->val[c])++;
     }
 }
 
-void saveHistogramToFile(vector<vector<HistogramElement> > *histogram, ofstream& outputFile, int *image) {
+void saveHistogramToFile(vector<vector<vector<float>>> *histogram, ofstream& outputFile, int *image) {
     outputFile << endl;
     outputFile << *image << ".jpg" << endl;
+    
     int divisionNumber = 0;
-    for (vector<HistogramElement> histElemVector : *histogram) {
+    int colorNumber = 0;
+    
+    for (vector<vector<float>> divisionVector : *histogram) {
         outputFile << divisionNumber << endl;
         divisionNumber++;
-        for (HistogramElement histElem : histElemVector) {
-            outputFile << histElem.color << " " << histElem.normalizedValue << ",";
+        for (vector<float> colorVector : divisionVector) {
+            outputFile << colorNumber << endl;
+            colorNumber++;
+            for (float value : colorVector) {
+                outputFile << value << " ";
+            }
+            outputFile << endl;
         }
-        outputFile << endl;
+        colorNumber = 0;
+        
     }
 }
 
@@ -143,16 +141,34 @@ void removeOldHistogramFile(string *outputFileName) {
     }
 }
 
-void clearHistogram(vector<vector<HistogramElement> > *histogram) {
-    for (vector<HistogramElement> histElem : *histogram) {
-        histElem.clear();
+void clearHistogram(vector<vector<vector<float>>> *histogram) {
+    for (vector<vector<float> > divisionVector : *histogram) {
+        for (vector<float> colorVector : divisionVector) {
+            colorVector.clear();
+        }
+    }
+}
+
+void normalizeHistogram(vector<vector<vector<float>>> *histogram, DivisionLimits *imageDivisions) {
+    int i = 0, j = 0, k = 0;
+    for (vector<vector<float> > divisionVector : *histogram) {
+        for (vector<float> colorVector : divisionVector) {
+            for (float value : colorVector) {
+                histogram->at(i).at(j).at(k) = value/imageDivisions->pixelsByDivision;
+                k++;
+            }
+            k = 0;
+            j++;
+        }
+        j = 0;
+        i++;
     }
 }
 
 
 int main(int argc, char const *argv[]) {
     
-    vector<vector<HistogramElement> > histogram(numberOfDivisions);
+    vector<vector<vector<float>>> histogram(numberOfDivisions, vector<vector<float>>(3, vector<float>(precision)));
     DivisionLimits imageDivisions;
     IplImage *currentImage;
     CvScalar sc;
@@ -179,6 +195,7 @@ int main(int argc, char const *argv[]) {
             }
         }
         
+        normalizeHistogram(&histogram, &imageDivisions);
         saveHistogramToFile(&histogram, outputFile, &image);
         clearHistogram(&histogram);
         oss.str(string());
