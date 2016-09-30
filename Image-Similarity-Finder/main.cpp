@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <fstream>
 
 using namespace std;
 
@@ -43,7 +44,8 @@ typedef struct HistogramElement
 {
     Color color;
     float value;
-    HistogramElement (Color c, float v) : color(c), value(v) {};
+    float normalizedValue;
+    HistogramElement (Color c, float v, float nV) : color(c), value(v), normalizedValue(nV) {};
 }
 HistogramElement;
 
@@ -60,7 +62,8 @@ DivisionElements;
 
 typedef struct DivisionLimits
 {
-    vector<DivisionElements > limits{numberOfDivisions};
+    vector<DivisionElements > limits;
+    int pixelsByDivision;
 }
 DivisionLimits;
 
@@ -80,10 +83,11 @@ void getDivisionLimits(IplImage *image, DivisionLimits *imageDivisions) {
     int heightStep = (image->height)/sqrtDivisions;
     int widthStep = (image->width)/sqrtDivisions;
     int divisionNumber = 0;
+    imageDivisions->pixelsByDivision = widthStep * heightStep;
     for (int i = 0; i < sqrtDivisions; i++) {
         for (int j = 0; j < sqrtDivisions; j++) {
+            imageDivisions->limits.push_back(DivisionElements(divisionNumber, j*widthStep, i*heightStep, (j+1)*widthStep, (i+1)*heightStep));
             divisionNumber++;
-            imageDivisions->limits.push_back(DivisionElements(divisionNumber, i*heightStep, j*widthStep, (i+1)*heightStep, (j+1)*widthStep));
         }
     }
 }
@@ -91,7 +95,7 @@ void getDivisionLimits(IplImage *image, DivisionLimits *imageDivisions) {
 bool isInDivision(Point2D_INT *pixelPosition, DivisionElements *divElem) {
     if (pixelPosition->X >= divElem->startX &&
         pixelPosition->X <  divElem->endX   &&
-        pixelPosition->Y <= divElem->startY &&
+        pixelPosition->Y >= divElem->startY &&
         pixelPosition->Y <  divElem->endY)
     {
         return true;
@@ -100,20 +104,46 @@ bool isInDivision(Point2D_INT *pixelPosition, DivisionElements *divElem) {
 }
 
 int getDivisionNumber(DivisionLimits *imageDivisions, Point2D_INT *pixelPosition) {
-    int divisionNumber = 0;
     for (DivisionElements divElem : imageDivisions->limits) {
         if (isInDivision(pixelPosition, &divElem)) {
-            divisionNumber = divElem.divisionNumber;
+            return divElem.divisionNumber;
         }
     }
-    return divisionNumber;
+    return 0;
 }
 
 void populateHistogram(vector<vector<HistogramElement> > *histogram, DivisionLimits *imageDivisions, CvScalar *sc, Point2D_INT *pixelPosition) {
     int divisionNumber = getDivisionNumber(imageDivisions, pixelPosition);
     for (int c = 0; c < 3; c++) {
-        HistogramElement histElem(Color(c), sc->val[c]);
+        HistogramElement histElem(Color(c), sc->val[c], sc->val[c]/imageDivisions->pixelsByDivision);
         histogram->at(divisionNumber).push_back(histElem);
+    }
+}
+
+void saveHistogramToFile(vector<vector<HistogramElement> > *histogram, ofstream outputFile, int *image) {
+    
+    
+    outputFile << endl;
+    outputFile << *image << ".jpg" << endl;
+    int divisionNumber = 0;
+    for (vector<HistogramElement> histElemVector : *histogram) {
+        outputFile << divisionNumber << endl;
+        divisionNumber++;
+        for (HistogramElement histElem : histElemVector) {
+            outputFile << histElem.color << " " << histElem.normalizedValue << ",";
+        }
+        outputFile << endl;
+    }
+    
+    
+}
+
+void removeOldHistogramFile(string *outputFileName) {
+    ifstream outputFile;
+    outputFile.open(*outputFileName);
+    if (outputFile.is_open()) {
+        outputFile.close();
+        remove(outputFileName->c_str());
     }
 }
 
@@ -125,6 +155,11 @@ int main(int argc, char const *argv[]) {
     CvScalar sc;
     string imagePath;
     ostringstream oss;
+    
+    string outputFileName = "normalizedHistogram.txt";
+    removeOldHistogramFile(&outputFileName);
+    ofstream outputFile;
+    outputFile.open(outputFileName, ios::app);
 
     for (int image = 0; image < numberOfImages; image++) {
         oss << "/Users/lucas/Documents/Fall 2016/opencv_images/" << image << ".jpg";
@@ -133,14 +168,19 @@ int main(int argc, char const *argv[]) {
         
         getDivisionLimits(currentImage, &imageDivisions);
         
-        for (int x = 0; x < currentImage->height; x++) {
-            for (int y = 0; y < currentImage->width; y++) {
-                sc = cvGet2D(currentImage, x, y);
+        for (int x = 0; x < currentImage->width; x++) {
+            for (int y = 0; y < currentImage->height; y++) {
+                sc = cvGet2D(currentImage, y, x);
                 Point2D_INT pixelPosition(x, y);
                 populateHistogram(&histogram, &imageDivisions, &sc, &pixelPosition);
             }
         }
+        
+        saveHistogramToFile(&histogram, outputFile, &image);
+        histogram.clear();
     }
+    
+    outputFile.close();
     
     return 0;
 }
