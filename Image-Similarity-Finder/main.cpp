@@ -18,7 +18,6 @@ using namespace std;
 /* Enumerations                                                          */
 
 enum DivisionType {
-    ONE_BY_TWO      = 2,
     TWO_BY_TWO      = 4,
     THREE_BY_THREE  = 9,
     FOUR_BY_FOUR    = 16,
@@ -29,7 +28,7 @@ enum DivisionType {
 /* Constants                                                             */
 
 const DivisionType numberOfDivisions = TWO_BY_TWO;
-const int numberOfImages = 1000;
+const int numberOfImages = 250;
 
 /* --------------------------------------------------------------------- */
 /* Structs                                                               */
@@ -45,12 +44,12 @@ typedef struct DivisionElements
 }
 DivisionElements;
 
-typedef struct DivisionLimits
+typedef struct Divisions
 {
     vector<DivisionElements > limits;
     int pixelsByDivision;
 }
-DivisionLimits;
+Divisions;
 
 typedef struct Point2D_INT
 {
@@ -63,7 +62,7 @@ Point2D_INT;
 /* --------------------------------------------------------------------- */
 /* Functions                                                             */
 
-void getDivisionLimits(IplImage *image, DivisionLimits *imageDivisions) {
+void getDivisionLimits(IplImage *image, Divisions *imageDivisions) {
     int sqrtDivisions = sqrt((double) numberOfDivisions);
     int heightStep = (image->height)/sqrtDivisions;
     int widthStep = (image->width)/sqrtDivisions;
@@ -88,7 +87,7 @@ bool isInDivision(Point2D_INT *pixelPosition, DivisionElements *divElem) {
     return false;
 }
 
-int getDivisionNumber(DivisionLimits *imageDivisions, Point2D_INT *pixelPosition) {
+int getDivisionNumber(Divisions *imageDivisions, Point2D_INT *pixelPosition) {
     for (DivisionElements divElem : imageDivisions->limits) {
         if (isInDivision(pixelPosition, &divElem)) {
             return divElem.divisionNumber;
@@ -98,7 +97,7 @@ int getDivisionNumber(DivisionLimits *imageDivisions, Point2D_INT *pixelPosition
 }
 
 void populateHistogram(vector<vector<vector<float>>> *histogram,
-                       DivisionLimits *imageDivisions,
+                       Divisions *imageDivisions,
                        CvScalar *sc,
                        Point2D_INT *pixelPosition)
 {
@@ -108,41 +107,18 @@ void populateHistogram(vector<vector<vector<float>>> *histogram,
     }
 }
 
-void saveHistogramToFile(vector<vector<vector<float>>> *histogram, ofstream& outputFile, int *image) {
+void saveFile(vector<vector<vector<float>>> *file, ofstream& outputFile, int *image) {
     outputFile << endl;
-    outputFile << *image << ".jpg" << endl;
+    outputFile << "image_file " << *image << ".jpg" << endl;
     
     int divisionNumber = 0;
     int colorNumber = 0;
     
-    for (vector<vector<float>> divisionVector : *histogram) {
-        outputFile << divisionNumber << endl;
+    for (vector<vector<float>> divisionVector : *file) {
+        outputFile << "division " << divisionNumber << endl;
         divisionNumber++;
         for (vector<float> colorVector : divisionVector) {
-            outputFile << colorNumber << endl;
-            colorNumber++;
-            for (float value : colorVector) {
-                outputFile << value << " ";
-            }
-            outputFile << endl;
-        }
-        colorNumber = 0;
-        
-    }
-}
-
-void savePercentileToFile(vector<vector<vector<float>>> *percentile, ofstream& outputFile, int *image) {
-    outputFile << endl;
-    outputFile << *image << ".jpg" << endl;
-    
-    int divisionNumber = 0;
-    int colorNumber = 0;
-    
-    for (vector<vector<float>> divisionVector : *percentile) {
-        outputFile << divisionNumber << endl;
-        divisionNumber++;
-        for (vector<float> colorVector : divisionVector) {
-            outputFile << colorNumber << endl;
+            outputFile << "color "<< colorNumber << endl;
             colorNumber++;
             for (float value : colorVector) {
                 outputFile << value << " ";
@@ -164,12 +140,14 @@ void saveFeaturesVectorToFile(vector<float> *features, ofstream& outputFile, int
     
 }
 
-void removeOldFile(string *outputFileName) {
+void removeOldFiles(vector<string> *fileNames) {
     ifstream outputFile;
-    outputFile.open(*outputFileName);
-    if (outputFile.is_open()) {
-        outputFile.close();
-        remove(outputFileName->c_str());
+    for (string fileName : *fileNames) {
+        outputFile.open(fileName);
+        if (outputFile.is_open()) {
+            outputFile.close();
+            remove(fileName.c_str());
+        }
     }
 }
 
@@ -193,7 +171,7 @@ void clearColorFeatureVector(vector<float> *colorFeatureVector) {
     colorFeatureVector->clear();
 }
 
-void normalizeHistogram(vector<vector<vector<float>>> *histogram, DivisionLimits *imageDivisions) {
+void normalizeHistogram(vector<vector<vector<float>>> *histogram, Divisions *imageDivisions) {
     int i = 0, j = 0, k = 0;
     for (vector<vector<float> > divisionVector : *histogram) {
         for (vector<float> colorVector : divisionVector) {
@@ -247,7 +225,7 @@ void populatePercentile(vector<vector<vector<float>>> *histogram, vector<vector<
     }
 }
 
-void buildColorPercentile(vector<vector<vector<float>>> *histogram, vector<vector<vector<float>>> *percentile, IplImage *currentImage, DivisionLimits *imageDivisions, CvScalar *sc) {
+void buildColorPercentile(vector<vector<vector<float>>> *histogram, vector<vector<vector<float>>> *percentile, IplImage *currentImage, Divisions *imageDivisions, CvScalar *sc) {
     getDivisionLimits(currentImage, imageDivisions);
     for (int x = 0; x < currentImage->width; x++) {
         for (int y = 0; y < currentImage->height; y++) {
@@ -280,34 +258,30 @@ int main(int argc, char const *argv[]) {
     vector<vector<vector<float>>> percentile(numberOfDivisions, vector<vector<float>>(3, vector<float>(11)));
     vector<float> colorFeatureVector;
     
-    DivisionLimits imageDivisions;
+    Divisions imageDivisions;
     IplImage *currentImage;
     CvScalar sc;
     string imagePath;
     ostringstream oss;
+    string imageFolderPath = "/Users/lucas/Documents/Fall 2016/opencv_images/";
+    string imageExtension = "jpg";
     
-    string outputFileNameHistogram = "normalizedHistogram.txt";
-    string outputFileNamePercentile = "normalizedPercentile.txt";
-    string outputFileNameFeatures = "colorFeatureVector.txt";
-    removeOldFile(&outputFileNameHistogram);
-    removeOldFile(&outputFileNamePercentile);
-    removeOldFile(&outputFileNameFeatures);
-    ofstream outputFileHistogram;
-    ofstream outputFilePercentile;
-    ofstream outputFileFeatures;
-    outputFileHistogram.open(outputFileNameHistogram, ios::app);
-    outputFilePercentile.open(outputFileNamePercentile, ios::app);
-    outputFileFeatures.open(outputFileNameFeatures, ios::app);
+    vector<string> fileNames {"normalizedHistogram.txt", "normalizedPercentile.txt", "colorFeatureVector.txt"};
+    ofstream outputFileHistogram, outputFilePercentile, outputFileFeatures;
+    removeOldFiles(&fileNames);
+    outputFileHistogram.open(fileNames.at(0), ios::app);
+    outputFilePercentile.open(fileNames.at(1), ios::app);
+    outputFileFeatures.open(fileNames.at(2), ios::app);
     
     for (int image = 0; image < numberOfImages; image++) {
-        oss << "/Users/lucas/Documents/Fall 2016/opencv_images/" << image << ".jpg";
+        oss << imageFolderPath << image << "." << imageExtension;
         imagePath = oss.str();
         currentImage = cvLoadImage(imagePath.c_str(), CV_LOAD_IMAGE_COLOR);
         
         // Functions calls to build color histogram and percentile
         buildColorPercentile(&histogram, &percentile, currentImage, &imageDivisions, &sc);
-        saveHistogramToFile(&histogram, outputFileHistogram, &image);
-        savePercentileToFile(&percentile, outputFilePercentile, &image);
+        saveFile(&histogram, outputFileHistogram, &image);
+        saveFile(&percentile, outputFilePercentile, &image);
         
         buildFeatureVector(&percentile, &colorFeatureVector);
         saveFeaturesVectorToFile(&colorFeatureVector, outputFileFeatures, &image);
