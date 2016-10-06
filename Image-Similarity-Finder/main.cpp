@@ -252,14 +252,64 @@ void buildFeatureVector(vector<vector<vector<float>>> *percentile, vector<float>
     }
 }
 
+void populateLBPHistogram(vector<vector<float>> *histogramLBP, Divisions *imageDivisions, Point2D_INT *pixelPosition, unsigned char *code) {
+    int divisionNumber = getDivisionNumber(imageDivisions, pixelPosition);
+    histogramLBP->at(divisionNumber).at(*code)++;
+}
+
+void normalizeLBPHistogram(vector<vector<float>> *histogramLBP, Divisions *imageDivisions) {
+    int i = 0, j = 0;
+    for (vector<float> divisionVector : *histogramLBP) {
+        for (float value : divisionVector) {
+            histogramLBP->at(i).at(j) = value/imageDivisions->pixelsByDivision;
+            j++;
+        }
+        j = 0;
+        i++;
+    }
+}
+
+void buildLBPHistogram(vector<vector<float>> *histogramLBP, IplImage *currentImageGrayscale, Divisions *imageDivisions, CvScalar *center) {
+    IplImage *destinationImage = cvCreateImage(cvGetSize(currentImageGrayscale), IPL_DEPTH_8U, 1);
+    getDivisionLimits(currentImageGrayscale, imageDivisions);
+    for(int x = 0; x < currentImageGrayscale->width; x++) {
+        for(int y = 0; y < currentImageGrayscale->height; y++) {
+            *center = cvGet2D(currentImageGrayscale, x, y);
+            unsigned char code = 0;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, x - 1, y - 1).val[0]) code += 128;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, x - 1, y)    .val[0]) code += 64;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, x - 1, y + 1).val[0]) code += 32;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, x, y + 1)    .val[0]) code += 16;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, x + 1, y + 1).val[0]) code += 8;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, x + 1, y)    .val[0]) code += 4;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, x + 1, y - 1).val[0]) code += 2;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, x, y - 1)    .val[0]) code += 1;
+            center->val[0] = code;
+            cvSet2D(destinationImage, x, y, *center);
+            Point2D_INT pixelPosition(x, y);
+            populateLBPHistogram(histogramLBP, imageDivisions, &pixelPosition, &code);
+        }
+    }
+    normalizeLBPHistogram(histogramLBP, imageDivisions);
+}
+
+IplImage* convertToGrayscale(IplImage *currentImage) {
+    IplImage *currentImageGrayscale = cvCreateImage(cvGetSize(currentImage), IPL_DEPTH_8U, 1);
+    cvCvtColor(currentImage, currentImageGrayscale, CV_RGB2GRAY);
+    return currentImageGrayscale;
+}
+
+
 int main(int argc, char const *argv[]) {
     
     vector<vector<vector<float>>> histogram(numberOfDivisions, vector<vector<float>>(3, vector<float>(256)));
     vector<vector<vector<float>>> percentile(numberOfDivisions, vector<vector<float>>(3, vector<float>(11)));
+    vector<vector<float>> histogramLBP(numberOfDivisions, vector<float>(256));
     vector<float> colorFeatureVector;
     
     Divisions imageDivisions;
     IplImage *currentImage;
+    IplImage *currentImageGrayscale;
     CvScalar sc;
     string imagePath;
     ostringstream oss;
@@ -278,13 +328,18 @@ int main(int argc, char const *argv[]) {
         imagePath = oss.str();
         currentImage = cvLoadImage(imagePath.c_str(), CV_LOAD_IMAGE_COLOR);
         
-        // Functions calls to build color histogram and percentile
         buildColorPercentile(&histogram, &percentile, currentImage, &imageDivisions, &sc);
         saveFile(&histogram, outputFileHistogram, &image);
         saveFile(&percentile, outputFilePercentile, &image);
+
+// test LBP function
+        currentImageGrayscale = convertToGrayscale(currentImage);
+        buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
+// save LBP to file
         
         buildFeatureVector(&percentile, &colorFeatureVector);
         saveFeaturesVectorToFile(&colorFeatureVector, outputFileFeatures, &image);
+// append LBP information to feature vector
         
         clearHistogram(&histogram);
         clearPercentile(&percentile);
