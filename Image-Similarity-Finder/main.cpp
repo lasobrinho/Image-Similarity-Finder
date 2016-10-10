@@ -28,7 +28,7 @@ enum DivisionType {
 /* Constants                                                             */
 
 const DivisionType numberOfDivisions = TWO_BY_TWO;
-const int numberOfImages = 250;
+const int numberOfImages = 25;
 
 /* --------------------------------------------------------------------- */
 /* Structs                                                               */
@@ -275,23 +275,48 @@ void normalizeLBPHistogram(vector<vector<float>> *histogramLBP, Divisions *image
     }
 }
 
+void initializeDirectionInts(int *left, int *right, int *up, int *down, int x, int y, IplImage *currentImageGrayscale) {
+    if (x == 0) {
+        *left = x;
+        *right = x + 1;
+    } else if (x == currentImageGrayscale->width - 1) {
+        *left = x - 1;
+        *right = x;
+    } else {
+        *left = x - 1;
+        *right = x + 1;
+    }
+    if (y == 0) {
+        *up = y;
+        *down = y + 1;
+    } else if (y == currentImageGrayscale->height - 1) {
+        *up = y - 1;
+        *down = y;
+    } else {
+        *up = y - 1;
+        *down = y + 1;
+    }
+}
+
 void buildLBPHistogram(vector<vector<float>> *histogramLBP, IplImage *currentImageGrayscale, Divisions *imageDivisions, CvScalar *center) {
     IplImage *destinationImage = cvCreateImage(cvGetSize(currentImageGrayscale), IPL_DEPTH_8U, 1);
     getDivisionLimits(currentImageGrayscale, imageDivisions);
+    int left, right, up, down;
     for(int x = 0; x < currentImageGrayscale->width; x++) {
         for(int y = 0; y < currentImageGrayscale->height; y++) {
-            *center = cvGet2D(currentImageGrayscale, x, y);
+            initializeDirectionInts(&left, &right, &up, &down, x, y, currentImageGrayscale);
+            *center = cvGet2D(currentImageGrayscale, y, x);
             unsigned char code = 0;
-            if(center->val[0] <= cvGet2D(currentImageGrayscale, x - 1, y - 1).val[0]) code += 128;
-            if(center->val[0] <= cvGet2D(currentImageGrayscale, x - 1, y)    .val[0]) code += 64;
-            if(center->val[0] <= cvGet2D(currentImageGrayscale, x - 1, y + 1).val[0]) code += 32;
-            if(center->val[0] <= cvGet2D(currentImageGrayscale, x, y + 1)    .val[0]) code += 16;
-            if(center->val[0] <= cvGet2D(currentImageGrayscale, x + 1, y + 1).val[0]) code += 8;
-            if(center->val[0] <= cvGet2D(currentImageGrayscale, x + 1, y)    .val[0]) code += 4;
-            if(center->val[0] <= cvGet2D(currentImageGrayscale, x + 1, y - 1).val[0]) code += 2;
-            if(center->val[0] <= cvGet2D(currentImageGrayscale, x, y - 1)    .val[0]) code += 1;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, up, left)   .val[0]) code += 128;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, y, left)    .val[0]) code += 64;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, down, left) .val[0]) code += 32;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, down, x)    .val[0]) code += 16;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, down, right).val[0]) code += 8;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, y, right)   .val[0]) code += 4;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, up, right)  .val[0]) code += 2;
+            if(center->val[0] <= cvGet2D(currentImageGrayscale, up, x)      .val[0]) code += 1;
             center->val[0] = code;
-            cvSet2D(destinationImage, x, y, *center);
+            cvSet2D(destinationImage, y, x, *center);
             Point2D_INT pixelPosition(x, y);
             populateLBPHistogram(histogramLBP, imageDivisions, &pixelPosition, &code);
         }
