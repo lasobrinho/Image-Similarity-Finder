@@ -152,7 +152,7 @@ void removeOldFiles(vector<string> *fileNames) {
 }
 
 void clearHistogram(vector<vector<vector<float>>> *histogram) {
-    for (vector<vector<float> > divisionVector : *histogram) {
+    for (vector<vector<float>> divisionVector : *histogram) {
         for (vector<float> colorVector : divisionVector) {
             colorVector.clear();
         }
@@ -169,6 +169,12 @@ void clearPercentile(vector<vector<vector<float>>> *percentile) {
 
 void clearColorFeatureVector(vector<float> *colorFeatureVector) {
     colorFeatureVector->clear();
+}
+
+void clearHistogramLBPVector(vector<vector<float>> *histogramLBP) {
+    for (vector<float> divisionVector : *histogramLBP) {
+        divisionVector.clear();
+    }
 }
 
 void normalizeHistogram(vector<vector<vector<float>>> *histogram, Divisions *imageDivisions) {
@@ -299,6 +305,23 @@ IplImage* convertToGrayscale(IplImage *currentImage) {
     return currentImageGrayscale;
 }
 
+void saveLBPFile(vector<vector<float>> *histogramLBP, ofstream& outputFile, int *image) {
+    outputFile << endl;
+    outputFile << "image_file " << *image << ".jpg" << endl;
+    
+    int divisionNumber = 0;
+    
+    for (vector<float> divisionVector : *histogramLBP) {
+        outputFile << "division " << divisionNumber << endl;
+        divisionNumber++;
+        for (float value : divisionVector) {
+            outputFile << value << "";
+            
+        }
+        outputFile << endl;
+    }
+}
+
 
 int main(int argc, char const *argv[]) {
     
@@ -316,40 +339,44 @@ int main(int argc, char const *argv[]) {
     string imageFolderPath = "/Users/lucas/Documents/Fall 2016/opencv_images/";
     string imageExtension = "jpg";
     
-    vector<string> fileNames {"normalizedHistogram.txt", "normalizedPercentile.txt", "colorFeatureVector.txt"};
-    ofstream outputFileHistogram, outputFilePercentile, outputFileFeatures;
+    vector<string> fileNames {"normalizedHistogram.txt", "normalizedPercentile.txt", "colorFeatureVector.txt", "histogramLBP.txt"};
+    ofstream outputFileHistogram, outputFilePercentile, outputFileFeatures, outputFileHistogramLBP;
     removeOldFiles(&fileNames);
     outputFileHistogram.open(fileNames.at(0), ios::app);
     outputFilePercentile.open(fileNames.at(1), ios::app);
     outputFileFeatures.open(fileNames.at(2), ios::app);
+    outputFileHistogramLBP.open(fileNames.at(3), ios::app);
     
     for (int image = 0; image < numberOfImages; image++) {
         oss << imageFolderPath << image << "." << imageExtension;
         imagePath = oss.str();
         currentImage = cvLoadImage(imagePath.c_str(), CV_LOAD_IMAGE_COLOR);
         
-        buildColorPercentile(&histogram, &percentile, currentImage, &imageDivisions, &sc);
-        saveFile(&histogram, outputFileHistogram, &image);
-        saveFile(&percentile, outputFilePercentile, &image);
+        //buildColorPercentile(&histogram, &percentile, currentImage, &imageDivisions, &sc);
+        //saveFile(&histogram, outputFileHistogram, &image);
+        //saveFile(&percentile, outputFilePercentile, &image);
 
 // test LBP function
         currentImageGrayscale = convertToGrayscale(currentImage);
         buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
+        saveLBPFile(&histogramLBP, outputFileHistogramLBP, &image);
 // save LBP to file
         
-        buildFeatureVector(&percentile, &colorFeatureVector);
-        saveFeaturesVectorToFile(&colorFeatureVector, outputFileFeatures, &image);
+        //buildFeatureVector(&percentile, &colorFeatureVector);
+        //saveFeaturesVectorToFile(&colorFeatureVector, outputFileFeatures, &image);
 // append LBP information to feature vector
         
-        clearHistogram(&histogram);
-        clearPercentile(&percentile);
-        clearColorFeatureVector(&colorFeatureVector);
+        //clearHistogram(&histogram);
+        //clearPercentile(&percentile);
+        clearHistogramLBPVector(&histogramLBP);
+        //clearColorFeatureVector(&colorFeatureVector);
         
         oss.str(string());
     }
     
     outputFileHistogram.close();
     outputFilePercentile.close();
+    outputFileHistogramLBP.close();
     outputFileFeatures.close();
     
     return 0;
