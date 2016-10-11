@@ -24,11 +24,17 @@ enum DivisionType {
     FIVE_BY_FIVE    = 25
 };
 
+enum SearchMode {
+    COLOR_HISTOGRAM         = 0,
+    LOCAL_BINARY_PATTERN    = 1,
+    ALL_MODES               = 2
+};
+
 /* --------------------------------------------------------------------- */
 /* Constants                                                             */
 
 const DivisionType numberOfDivisions = TWO_BY_TWO;
-const int numberOfImages = 1000;
+const int numberOfImages = 10;
 
 /* --------------------------------------------------------------------- */
 /* Structs                                                               */
@@ -341,61 +347,129 @@ void saveLBPFile(vector<vector<float>> *histogramLBP, ofstream& outputFile, int 
     }
 }
 
+void findSimilarImages(IplImage *inputImage, SearchMode mode) {
+    if (mode == COLOR_HISTOGRAM) {
+        vector<vector<vector<float>>> histogram(numberOfDivisions, vector<vector<float>>(3, vector<float>(256)));
+        vector<vector<vector<float>>> percentile(numberOfDivisions, vector<vector<float>>(3, vector<float>(11)));
+        vector<float> colorFeatureVector;
+        Divisions imageDivisions;
+        CvScalar sc;
+        
+        buildColorPercentile(&histogram, &percentile, inputImage, &imageDivisions, &sc);
+        buildFeatureVector(&percentile, &colorFeatureVector);
+        
+        // to do
+    }
+    if (mode == LOCAL_BINARY_PATTERN) {
+        // to do
+    }
+    if (mode == ALL_MODES) {
+        // to do
+    }
+}
+
 
 int main(int argc, char const *argv[]) {
     
-    vector<vector<vector<float>>> histogram(numberOfDivisions, vector<vector<float>>(3, vector<float>(256)));
-    vector<vector<vector<float>>> percentile(numberOfDivisions, vector<vector<float>>(3, vector<float>(11)));
-    vector<vector<float>> histogramLBP(numberOfDivisions, vector<float>(256));
-    vector<float> colorFeatureVector;
-    
-    Divisions imageDivisions;
-    IplImage *currentImage;
-    IplImage *currentImageGrayscale;
-    CvScalar sc;
-    string imagePath;
-    ostringstream oss;
-    string imageFolderPath = "/Users/lucas/Documents/Fall 2016/opencv_images/";
-    string imageExtension = "jpg";
-    
-    vector<string> fileNames {"normalizedHistogram.txt", "normalizedPercentile.txt", "colorFeatureVector.txt", "histogramLBP.txt"};
-    ofstream outputFileHistogram, outputFilePercentile, outputFileFeatures, outputFileHistogramLBP;
-    removeOldFiles(&fileNames);
-    outputFileHistogram.open(fileNames.at(0), ios::app);
-    outputFilePercentile.open(fileNames.at(1), ios::app);
-    outputFileFeatures.open(fileNames.at(2), ios::app);
-    outputFileHistogramLBP.open(fileNames.at(3), ios::app);
-    
-    for (int image = 0; image < numberOfImages; image++) {
-        oss << imageFolderPath << image << "." << imageExtension;
-        imagePath = oss.str();
-        currentImage = cvLoadImage(imagePath.c_str(), CV_LOAD_IMAGE_COLOR);
-        
-        buildColorPercentile(&histogram, &percentile, currentImage, &imageDivisions, &sc);
-        //saveFile(&histogram, outputFileHistogram, &image);
-        //saveFile(&percentile, outputFilePercentile, &image);
-        buildFeatureVector(&percentile, &colorFeatureVector);
-        saveFeaturesVectorToFile(&colorFeatureVector, outputFileFeatures, &image);
-// append LBP information to feature vector
-
-        currentImageGrayscale = convertToGrayscale(currentImage);
-        buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
-        saveLBPFile(&histogramLBP, outputFileHistogramLBP, &image);
-        
-        clearHistogram(&histogram);
-        clearPercentile(&percentile);
-        clearHistogramLBPVector(&histogramLBP);
-        clearColorFeatureVector(&colorFeatureVector);
-        
-        oss.str(string());
+    // Build and save file for a set of images
+    // Usage: --build path_to_images images_extension
+    if (strcmp(argv[1], "--build") == 0) {
+        if (argc == 4) {
+            vector<vector<vector<float>>> histogram(numberOfDivisions, vector<vector<float>>(3, vector<float>(256)));
+            vector<vector<vector<float>>> percentile(numberOfDivisions, vector<vector<float>>(3, vector<float>(11)));
+            vector<vector<float>> histogramLBP(numberOfDivisions, vector<float>(256));
+            vector<float> colorFeatureVector;
+            
+            Divisions imageDivisions;
+            IplImage *currentImage;
+            IplImage *currentImageGrayscale;
+            CvScalar sc;
+            string imagePath;
+            ostringstream oss;
+            //string imageFolderPath = "/Users/lucas/Documents/Fall 2016/opencv_images/";
+            string imageFolderPath = argv[2];
+            //string imageExtension = "jpg";
+            string imageExtension = argv[3];
+            
+            vector<string> fileNames {"normalizedHistogram.txt", "normalizedPercentile.txt", "colorFeatureVector.txt", "histogramLBP.txt"};
+            ofstream outputFileHistogram, outputFilePercentile, outputFileFeatures, outputFileHistogramLBP;
+            removeOldFiles(&fileNames);
+            outputFileHistogram.open(fileNames.at(0), ios::app);
+            outputFilePercentile.open(fileNames.at(1), ios::app);
+            outputFileFeatures.open(fileNames.at(2), ios::app);
+            outputFileHistogramLBP.open(fileNames.at(3), ios::app);
+            
+            for (int image = 0; image < numberOfImages; image++) {
+                oss << imageFolderPath << image << "." << imageExtension;
+                imagePath = oss.str();
+                currentImage = cvLoadImage(imagePath.c_str(), CV_LOAD_IMAGE_COLOR);
+                
+                buildColorPercentile(&histogram, &percentile, currentImage, &imageDivisions, &sc);
+                //saveFile(&histogram, outputFileHistogram, &image);
+                //saveFile(&percentile, outputFilePercentile, &image);
+                buildFeatureVector(&percentile, &colorFeatureVector);
+                saveFeaturesVectorToFile(&colorFeatureVector, outputFileFeatures, &image);
+                // append LBP information to feature vector
+                
+                currentImageGrayscale = convertToGrayscale(currentImage);
+                buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
+                saveLBPFile(&histogramLBP, outputFileHistogramLBP, &image);
+                
+                clearHistogram(&histogram);
+                clearPercentile(&percentile);
+                clearHistogramLBPVector(&histogramLBP);
+                clearColorFeatureVector(&colorFeatureVector);
+                
+                oss.str(string());
+            }
+            
+            outputFileHistogram.close();
+            outputFilePercentile.close();
+            outputFileHistogramLBP.close();
+            outputFileFeatures.close();
+        } else {
+            cerr << "Invalid arguments for --build. Usage: --build [path_to_images] [images_extension]" << endl;
+            return 0;
+        }
     }
     
-    outputFileHistogram.close();
-    outputFilePercentile.close();
-    outputFileHistogramLBP.close();
-    outputFileFeatures.close();
+    // Compare a given image to a set of images using color histogram comparison
+    // Usage: --color path_to_image
+    if (strcmp(argv[1], "--color") == 0) {
+        if (argc == 3) {
+            IplImage *inputImage = cvLoadImage(argv[2], CV_LOAD_IMAGE_COLOR);
+            findSimilarImages(inputImage, COLOR_HISTOGRAM);
+        } else {
+            cerr << "Invalid arguments for --color. Usage: --color [path_to_image]" << endl;
+            return 0;
+        }
+    }
     
-    return 0;
+    // Compare a given image to a set of images using Local Binary Pattern (LBP) method
+    // Usage: --lbp path_to_image
+    if (strcmp(argv[1], "--lbp") == 0) {
+        if (argc == 3) {
+            IplImage *inputImage = cvLoadImage(argv[2], CV_LOAD_IMAGE_COLOR);
+            findSimilarImages(inputImage, LOCAL_BINARY_PATTERN);
+        } else {
+            cerr << "Invalid arguments for --lbp. Usage: --lbp [path_to_image]" << endl;
+            return 0;
+        }
+    }
+    
+    // Compare a given image using both color histogram and LBP methods
+    // Usage: --all path_to_image
+    if (strcmp(argv[1], "--all") == 0) {
+        if (argc == 3) {
+            IplImage *inputImage = cvLoadImage(argv[2], CV_LOAD_IMAGE_COLOR);
+            findSimilarImages(inputImage, ALL_MODES);
+        } else {
+            cerr << "Invalid arguments for --all. Usage: --all [path_to_image]" << endl;
+            return 0;
+        }
+    }
+    
+    return 1;
 }
 
 
