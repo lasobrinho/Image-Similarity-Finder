@@ -34,7 +34,7 @@ enum SearchMode {
 /* Constants                                                             */
 
 const DivisionType numberOfDivisions = TWO_BY_TWO;
-const int numberOfImages = 10;
+const int numberOfImages = 100;
 
 /* --------------------------------------------------------------------- */
 /* Structs                                                               */
@@ -140,9 +140,14 @@ void saveFeaturesFile(vector<float> *features, vector<vector<float>> *histogramL
     outputFile << endl;
     outputFile << *image << ".jpg" << endl;
     
+    outputFile << fixed;
+    outputFile.precision(10);
+    
     for (float value : *features) {
         outputFile << value << " ";
     }
+    
+    outputFile << endl;
     
     for (vector<float> divisionVector : *histogramLBP) {
         for (float value : divisionVector) {
@@ -419,7 +424,7 @@ int main(int argc, char const *argv[]) {
             //string imageExtension = "jpg";
             string imageExtension = argv[3];
             
-            vector<string> fileNames {"normalizedHistogram.txt", "normalizedPercentile.txt", "colorFeatureVector.txt", "histogramLBP.txt"};
+            vector<string> fileNames {"DEBUG_normalizedHistogram.txt", "DEBUG_normalizedPercentile.txt", "features.txt", "DEBUG_histogramLBP.txt"};
             ofstream outputFileHistogram, outputFilePercentile, outputFileFeatures, outputFileHistogramLBP;
             removeOldFiles(&fileNames);
             outputFileHistogram.open(fileNames.at(0), ios::app);
@@ -433,14 +438,14 @@ int main(int argc, char const *argv[]) {
                 currentImage = cvLoadImage(imagePath.c_str(), CV_LOAD_IMAGE_COLOR);
                 
                 buildColorPercentile(&histogram, &percentile, currentImage, &imageDivisions, &sc);
-                //saveFile(&histogram, outputFileHistogram, &image);
-                //saveFile(&percentile, outputFilePercentile, &image);
+                saveFile(&histogram, outputFileHistogram, &image);
+                saveFile(&percentile, outputFilePercentile, &image);
                 buildColorFeatureVector(&percentile, &colorFeatureVector);
-                // append LBP information to feature vector
                 
                 currentImageGrayscale = convertToGrayscale(currentImage);
                 buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
                 saveLBPFile(&histogramLBP, outputFileHistogramLBP, &image);
+                
                 saveFeaturesFile(&colorFeatureVector, &histogramLBP, outputFileFeatures, &image);
                 
                 clearHistogram(&histogram);
@@ -459,32 +464,33 @@ int main(int argc, char const *argv[]) {
             cerr << "Invalid arguments for --build. Usage: --build [path_to_images] [images_extension]" << endl;
             return 0;
         }
-    }
-    
-    if (argc == 3) {
-        // Compare a given image to a set of images using color histogram comparison
-        // Usage: --color path_to_image
-        if (strcmp(argv[1], "--color") == 0) {
-            findSimilarImages(argv[2], COLOR_HISTOGRAM);
-        }
+    } else {
+        if (argc == 3) {
+            
+            // Compare a given image to a set of images using color histogram comparison
+            // Usage: --color path_to_image
+            if (strcmp(argv[1], "--color") == 0) {
+                findSimilarImages(argv[2], COLOR_HISTOGRAM);
+            }
         
-        // Compare a given image to a set of images using Local Binary Pattern (LBP) method
-        // Usage: --lbp path_to_image
-        else if (strcmp(argv[1], "--lbp") == 0) {
-            findSimilarImages(argv[2], LOCAL_BINARY_PATTERN);
-        }
+            // Compare a given image to a set of images using Local Binary Pattern (LBP) method
+            // Usage: --lbp path_to_image
+            else if (strcmp(argv[1], "--lbp") == 0) {
+                findSimilarImages(argv[2], LOCAL_BINARY_PATTERN);
+            }
         
-        // Compare a given image using both color histogram and LBP methods
-        // Usage: --all path_to_image
-        else if (strcmp(argv[1], "--all") == 0) {
-            findSimilarImages(argv[2], ALL_MODES);
+            // Compare a given image using both color histogram and LBP methods
+            // Usage: --all path_to_image
+            else if (strcmp(argv[1], "--all") == 0) {
+                findSimilarImages(argv[2], ALL_MODES);
+            } else {
+                cerr << "Invalid argument option: " << argv[1] << ". Usage: [--color, --lbp, --all] [path_to_image]" << endl;
+                return 0;
+            }
         } else {
-            cerr << "Invalid argument option: " << argv[1] << ". Usage: [--color, --lbp, --all] [path_to_image]" << endl;
+            cerr << "Invalid arguments for " << argv[1] << ". Usage: " << argv[1] << " [path_to_image]" << endl;
             return 0;
         }
-    } else {
-        cerr << "Invalid arguments for " << argv[1] << ". Usage: " << argv[1] << " [path_to_image]" << endl;
-        return 0;
     }
     
     return 1;

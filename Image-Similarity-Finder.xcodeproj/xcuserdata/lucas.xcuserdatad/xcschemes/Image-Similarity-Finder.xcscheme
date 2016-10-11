@@ -63,11 +63,15 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "--color"
+            argument = "--build"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/lucas/Documents/Fall\ 2016/opencv_images/5.jpg"
+            argument = "/Users/lucas/Documents/Fall\ 2016/opencv_images/"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "jpg"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
