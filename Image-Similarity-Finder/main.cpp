@@ -28,7 +28,7 @@ enum DivisionType {
 /* Constants                                                             */
 
 const DivisionType numberOfDivisions = TWO_BY_TWO;
-const int numberOfImages = 25;
+const int numberOfImages = 1000;
 
 /* --------------------------------------------------------------------- */
 /* Structs                                                               */
@@ -332,18 +332,12 @@ IplImage* convertToGrayscale(IplImage *currentImage) {
 
 void saveLBPFile(vector<vector<float>> *histogramLBP, ofstream& outputFile, int *image) {
     outputFile << endl;
-    outputFile << "image_file " << *image << ".jpg" << endl;
-    
-    int divisionNumber = 0;
+    outputFile << *image << ".jpg" << endl;
     
     for (vector<float> divisionVector : *histogramLBP) {
-        outputFile << "division " << divisionNumber << endl;
-        divisionNumber++;
         for (float value : divisionVector) {
-            outputFile << value << "";
-            
+            outputFile << value << " ";
         }
-        outputFile << endl;
     }
 }
 
@@ -377,24 +371,21 @@ int main(int argc, char const *argv[]) {
         imagePath = oss.str();
         currentImage = cvLoadImage(imagePath.c_str(), CV_LOAD_IMAGE_COLOR);
         
-        //buildColorPercentile(&histogram, &percentile, currentImage, &imageDivisions, &sc);
+        buildColorPercentile(&histogram, &percentile, currentImage, &imageDivisions, &sc);
         //saveFile(&histogram, outputFileHistogram, &image);
         //saveFile(&percentile, outputFilePercentile, &image);
+        buildFeatureVector(&percentile, &colorFeatureVector);
+        saveFeaturesVectorToFile(&colorFeatureVector, outputFileFeatures, &image);
+// append LBP information to feature vector
 
-// test LBP function
         currentImageGrayscale = convertToGrayscale(currentImage);
         buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
         saveLBPFile(&histogramLBP, outputFileHistogramLBP, &image);
-// save LBP to file
         
-        //buildFeatureVector(&percentile, &colorFeatureVector);
-        //saveFeaturesVectorToFile(&colorFeatureVector, outputFileFeatures, &image);
-// append LBP information to feature vector
-        
-        //clearHistogram(&histogram);
-        //clearPercentile(&percentile);
+        clearHistogram(&histogram);
+        clearPercentile(&percentile);
         clearHistogramLBPVector(&histogramLBP);
-        //clearColorFeatureVector(&colorFeatureVector);
+        clearColorFeatureVector(&colorFeatureVector);
         
         oss.str(string());
     }
