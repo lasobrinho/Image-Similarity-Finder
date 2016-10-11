@@ -357,15 +357,15 @@ void saveLBPFile(vector<vector<float>> *histogramLBP, ofstream& outputFile, int 
     }
 }
 
-void computeDifference(vector<float> *colorFeatureVector) {
+void computeDifference(vector<float> *colorFeatureVector, ifstream& featuresFile) {
     // to do
 }
 
-void computeDifference(vector<vector<float>> *histogramLBP) {
+void computeDifference(vector<vector<float>> *histogramLBP, ifstream& featuresFile) {
     // to do
 }
 
-void computeDifference(vector<float> *colorFeatureVector, vector<vector<float>> *histogramLBP) {
+void computeDifference(vector<float> *colorFeatureVector, vector<vector<float>> *histogramLBP, ifstream& featuresFile) {
     // to do
 }
 
@@ -381,23 +381,32 @@ void findSimilarImages(char const *inputImagePath, SearchMode mode) {
     Divisions imageDivisions;
     CvScalar sc;
     
+    string featuresFilePath = "./features.txt";
+    ifstream featuresFile;
+    featuresFile.open(featuresFilePath);
+    if(!featuresFile.is_open()) {
+        cerr << "Error opening file " << featuresFilePath << endl;
+        // return 0 instead of just returning nothing at all
+        return;
+    }
+    
     if (mode == COLOR_HISTOGRAM) {
         buildColorPercentile(&histogram, &percentile, inputImage, &imageDivisions, &sc);
         buildColorFeatureVector(&percentile, &colorFeatureVector);
         
-        computeDifference(&colorFeatureVector);
+        computeDifference(&colorFeatureVector, featuresFile);
     }
     if (mode == LOCAL_BINARY_PATTERN) {
         buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
         
-        computeDifference(&histogramLBP);
+        computeDifference(&histogramLBP, featuresFile);
     }
     if (mode == ALL_MODES) {
         buildColorPercentile(&histogram, &percentile, inputImage, &imageDivisions, &sc);
         buildColorFeatureVector(&percentile, &colorFeatureVector);
         buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
         
-        computeDifference(&colorFeatureVector, &histogramLBP);
+        computeDifference(&colorFeatureVector, &histogramLBP, featuresFile);
     }
 }
 
