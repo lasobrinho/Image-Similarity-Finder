@@ -11,6 +11,9 @@
 #include <vector>
 #include <sstream>
 #include <fstream>
+#include <unordered_map>
+#include <map>
+#include <sstream>
 
 using namespace std;
 
@@ -137,7 +140,6 @@ void saveFile(vector<vector<vector<float>>> *file, ofstream& outputFile, int *im
 }
 
 void saveFeaturesFile(vector<float> *features, vector<vector<float>> *histogramLBP, ofstream& outputFile, int *image) {
-    outputFile << endl;
     outputFile << *image << ".jpg" << endl;
     
     outputFile << fixed;
@@ -154,6 +156,8 @@ void saveFeaturesFile(vector<float> *features, vector<vector<float>> *histogramL
             outputFile << value << " ";
         }
     }
+    
+    outputFile << endl;
 }
 
 void removeOldFiles(vector<string> *fileNames) {
@@ -357,8 +361,40 @@ void saveLBPFile(vector<vector<float>> *histogramLBP, ofstream& outputFile, int 
     }
 }
 
+vector<float> getFeatureValues(string *featuresLine) {
+    vector<float> fileColorFeatureVector;
+    istringstream iss(*featuresLine);
+    float value;
+    while (iss >> value){
+        fileColorFeatureVector.push_back(value);
+    }
+    return fileColorFeatureVector;
+}
+
+void getColorFeatureVector(unordered_map<string, vector<float>> *imageNameToFeatures, ifstream& featuresFile) {
+    vector<float> fileColorFeatureVector;
+    string imageFileName, featuresLine, temp;
+    
+    while (getline(featuresFile, imageFileName)) {
+        getline(featuresFile, featuresLine);
+        fileColorFeatureVector = getFeatureValues(&featuresLine);
+        (*imageNameToFeatures)[imageFileName] = fileColorFeatureVector;
+        getline(featuresFile, temp);
+    }
+}
+
+float computeEuclidianDistance(vector<float> *colorFeatureVector, vector<float> *mappedfeatureVector) {
+    
+    return 0.0;
+}
+
 void computeDifference(vector<float> *colorFeatureVector, ifstream& featuresFile) {
-    // to do
+    unordered_map<string, vector<float>> imageNameToFeatures;
+    map<string, float> imageNameToDistance;
+    getColorFeatureVector(&imageNameToFeatures, featuresFile);
+    for (auto& entry : imageNameToFeatures) {
+        imageNameToDistance[entry.first] = computeEuclidianDistance(colorFeatureVector, &entry.second);
+    }
 }
 
 void computeDifference(vector<vector<float>> *histogramLBP, ifstream& featuresFile) {
@@ -408,6 +444,9 @@ void findSimilarImages(char const *inputImagePath, SearchMode mode) {
         
         computeDifference(&colorFeatureVector, &histogramLBP, featuresFile);
     }
+    
+    featuresFile.close();
+    
 }
 
 
