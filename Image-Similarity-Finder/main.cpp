@@ -384,8 +384,11 @@ void getColorFeatureVector(unordered_map<string, vector<float>> *imageNameToFeat
 }
 
 float computeEuclidianDistance(vector<float> *colorFeatureVector, vector<float> *mappedfeatureVector) {
-    
-    return 0.0;
+    float sum = 0;
+    for (int i = 0; i < colorFeatureVector->size(); i++) {
+        sum += pow(colorFeatureVector->at(i) - mappedfeatureVector->at(i), 2);
+    }
+    return sqrt(sum);
 }
 
 void computeDifference(vector<float> *colorFeatureVector, ifstream& featuresFile) {
@@ -395,6 +398,7 @@ void computeDifference(vector<float> *colorFeatureVector, ifstream& featuresFile
     for (auto& entry : imageNameToFeatures) {
         imageNameToDistance[entry.first] = computeEuclidianDistance(colorFeatureVector, &entry.second);
     }
+    
 }
 
 void computeDifference(vector<vector<float>> *histogramLBP, ifstream& featuresFile) {
