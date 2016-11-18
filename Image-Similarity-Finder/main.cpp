@@ -172,18 +172,30 @@ void removeOldFiles(vector<string> *fileNames) {
 }
 
 void clearHistogram(vector<vector<vector<float>>> *histogram) {
-    for (vector<vector<float>> divisionVector : *histogram) {
-        for (vector<float> colorVector : divisionVector) {
-            colorVector.clear();
+    int i, j, k;
+    for (i = 0; i < histogram->size(); i++) {
+        for (j = 0; j < 3; j++) {
+            for (k = 0; k < 256; k++) {
+                histogram->at(i).at(j).at(k) = 0;
+            }
         }
     }
 }
 
 void clearPercentile(vector<vector<vector<float>>> *percentile) {
+    int i, j, k;
+    i = 0;
     for (vector<vector<float> > divisionVector : *percentile) {
+        j = 0;
         for (vector<float> colorVector : divisionVector) {
-            colorVector.clear();
+            k = 0;
+            for (float v : colorVector) {
+                percentile->at(i).at(j).at(k) = 0;
+                k++;
+            }
+            j++;
         }
+        i++;
     }
 }
 
@@ -192,8 +204,15 @@ void clearColorFeatureVector(vector<float> *colorFeatureVector) {
 }
 
 void clearHistogramLBPVector(vector<vector<float>> *histogramLBP) {
+    int i, j;
+    i = 0;
     for (vector<float> divisionVector : *histogramLBP) {
-        divisionVector.clear();
+        j = 0;
+        for (float v : divisionVector) {
+            histogramLBP->at(i).at(j) = 0;
+            j++;
+        }
+        i++;
     }
 }
 
@@ -251,6 +270,10 @@ void populatePercentile(vector<vector<vector<float>>> *histogram, vector<vector<
     }
 }
 
+void clearImageDivisions(Divisions *imageDivisions) {
+    imageDivisions->limits.clear();
+}
+
 void buildColorPercentile(vector<vector<vector<float>>> *histogram, vector<vector<vector<float>>> *percentile, IplImage *currentImage, Divisions *imageDivisions, CvScalar *sc) {
     getDivisionLimits(currentImage, imageDivisions);
     for (int x = 0; x < currentImage->width; x++) {
@@ -262,6 +285,7 @@ void buildColorPercentile(vector<vector<vector<float>>> *histogram, vector<vecto
     }
     normalizeHistogram(histogram, imageDivisions);
     populatePercentile(histogram, percentile);
+    clearImageDivisions(imageDivisions);
 }
 
 void buildColorFeatureVector(vector<vector<vector<float>>> *percentile, vector<float> *colorFeatureVector) {
@@ -342,6 +366,7 @@ void buildLBPHistogram(vector<vector<float>> *histogramLBP, IplImage *currentIma
         }
     }
     normalizeLBPHistogram(histogramLBP, imageDivisions);
+    clearImageDivisions(imageDivisions);
 }
 
 IplImage* convertToGrayscale(IplImage *currentImage) {
@@ -381,12 +406,13 @@ void getColorFeatureVector(unordered_map<string, vector<float>> *imageNameToFeat
         (*imageNameToFeatures)[imageFileName] = fileColorFeatureVector;
         getline(featuresFile, temp);
     }
+    cout << "asd" << endl;
 }
 
-float computeEuclidianDistance(vector<float> *colorFeatureVector, vector<float> *mappedfeatureVector) {
+float computeEuclidianDistance(vector<float> *colorFeatureVector, vector<float> *mappedFeatureVector) {
     float sum = 0;
     for (int i = 0; i < colorFeatureVector->size(); i++) {
-        sum += pow(colorFeatureVector->at(i) - mappedfeatureVector->at(i), 2);
+        sum += pow(colorFeatureVector->at(i) - mappedFeatureVector->at(i), 2);
     }
     return sqrt(sum);
 }
@@ -396,9 +422,14 @@ void computeDifference(vector<float> *colorFeatureVector, ifstream& featuresFile
     map<string, float> imageNameToDistance;
     getColorFeatureVector(&imageNameToFeatures, featuresFile);
     for (auto& entry : imageNameToFeatures) {
+        // cout << entry.first << endl;
+        if (entry.first == "4.jpg") {
+            cout << "asd" << endl;
+        }
         imageNameToDistance[entry.first] = computeEuclidianDistance(colorFeatureVector, &entry.second);
     }
-    
+    // rank images based on the difference
+    cout << "asd" << endl;
 }
 
 void computeDifference(vector<vector<float>> *histogramLBP, ifstream& featuresFile) {
@@ -489,10 +520,22 @@ int main(int argc, char const *argv[]) {
                 imagePath = oss.str();
                 currentImage = cvLoadImage(imagePath.c_str(), CV_LOAD_IMAGE_COLOR);
                 
+                if (image == 4) {
+                    cout << "asd";
+                }
                 buildColorPercentile(&histogram, &percentile, currentImage, &imageDivisions, &sc);
+                
                 saveFile(&histogram, outputFileHistogram, &image);
                 saveFile(&percentile, outputFilePercentile, &image);
+                
+                if (image == 4) {
+                    cout << "asd";
+                }
                 buildColorFeatureVector(&percentile, &colorFeatureVector);
+                
+                if (image == 4) {
+                    cout << "asd";
+                }
                 
                 currentImageGrayscale = convertToGrayscale(currentImage);
                 buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
