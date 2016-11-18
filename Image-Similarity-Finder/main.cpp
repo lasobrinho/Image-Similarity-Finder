@@ -420,7 +420,7 @@ void sortImagesByDifference(vector<pair<float, string>> *imageNameToDistance) {
     sort(imageNameToDistance->begin(), imageNameToDistance->end());
 }
 
-void computeDifference(vector<float> *colorFeatureVector, ifstream& featuresFile) {
+vector<pair<float, string>> computeDifference(vector<float> *colorFeatureVector, ifstream& featuresFile) {
     unordered_map<string, vector<float>> imageNameToFeatures;
     vector<pair<float, string>> imageNameToDistance;
     getColorFeatureVector(&imageNameToFeatures, featuresFile);
@@ -431,14 +431,154 @@ void computeDifference(vector<float> *colorFeatureVector, ifstream& featuresFile
         imageNameToDistance.push_back(entryPair);
     }
     sortImagesByDifference(&imageNameToDistance);
+    return imageNameToDistance;
 }
 
-void computeDifference(vector<vector<float>> *histogramLBP, ifstream& featuresFile) {
-    // to do
+vector<float> getLBPHistogramValues(string *histogramLBPLine) {
+    vector<float> fileLBPHistogramVector;
+    istringstream iss(*histogramLBPLine);
+    float value;
+    while (iss >> value) {
+        fileLBPHistogramVector.push_back(value);
+    }
+    return fileLBPHistogramVector;
 }
 
-void computeDifference(vector<float> *colorFeatureVector, vector<vector<float>> *histogramLBP, ifstream& featuresFile) {
-    // to do
+void getLBPHistogramVector(unordered_map<string, vector<float>> *imageNameToLBPHistogram, ifstream& featuresFile) {
+    vector<float> fileLBPHistogramVector;
+    string imageFileName, histogramLBPLine, temp;
+    
+    while (getline(featuresFile, imageFileName)) {
+        getline(featuresFile, temp);
+        getline(featuresFile, histogramLBPLine);
+        fileLBPHistogramVector = getLBPHistogramValues(&histogramLBPLine);
+        (*imageNameToLBPHistogram)[imageFileName] = fileLBPHistogramVector;
+    }
+}
+
+vector<float> getAllValues(string *colorFeaturesLine, string *histogramLBPLine) {
+    vector<float> fileAllFeaturesVector;
+    istringstream issColor(*colorFeaturesLine);
+    istringstream issLBP(*histogramLBPLine);
+    
+    float value;
+    while (issColor >> value) {
+        fileAllFeaturesVector.push_back(value);
+    }
+    while (issLBP >> value) {
+        fileAllFeaturesVector.push_back(value);
+    }
+    return fileAllFeaturesVector;
+}
+
+void getAllFeaturesFromFile(unordered_map<string, vector<float>> *imageNameToAllFeatures, ifstream& featuresFile) {
+    vector<float> fileAllFeaturesVector;
+    string imageFileName, histogramLBPLine, colorFeaturesLine;
+    
+    while (getline(featuresFile, imageFileName)) {
+        getline(featuresFile, colorFeaturesLine);
+        getline(featuresFile, histogramLBPLine);
+        fileAllFeaturesVector = getAllValues(&colorFeaturesLine, &histogramLBPLine);
+        (*imageNameToAllFeatures)[imageFileName] = fileAllFeaturesVector;
+    }
+}
+
+vector<float> denormalizeHistogramLBPVector(vector<vector<float>> *histogramLBP) {
+    vector<float> histogramLBPVector;
+    for (vector<float> histogramLBPValues : *histogramLBP) {
+        for (float value : histogramLBPValues) {
+            histogramLBPVector.push_back(value);
+        }
+    }
+    return histogramLBPVector;
+}
+
+vector<pair<float, string>> computeDifference(vector<vector<float>> *histogramLBP, ifstream& featuresFile) {
+    unordered_map<string, vector<float>> imageNameToLBPHistogram;
+    vector<pair<float, string>> imageNameToDistance;
+    vector<float> histogramLBPVector;
+    getLBPHistogramVector(&imageNameToLBPHistogram, featuresFile);
+    for(auto& entry : imageNameToLBPHistogram) {
+        pair<float, string> entryPair;
+        entryPair.second = entry.first;
+        histogramLBPVector = denormalizeHistogramLBPVector(histogramLBP);
+        entryPair.first = computeEuclidianDistance(&histogramLBPVector, &entry.second);
+        imageNameToDistance.push_back(entryPair);
+    }
+    sortImagesByDifference(&imageNameToDistance);
+    return imageNameToDistance;
+}
+
+void combineVectors(vector<float> *allFeatures, vector<float> *colorFeatureVector, vector<vector<float>> *histogramLBP) {
+    vector<float> histogramLBPVector;
+    histogramLBPVector = denormalizeHistogramLBPVector(histogramLBP);
+    
+    allFeatures->insert(allFeatures->end(), colorFeatureVector->begin(), colorFeatureVector->end());
+    allFeatures->insert(allFeatures->end(), histogramLBPVector.begin(), histogramLBPVector.end());
+}
+
+vector<pair<float, string>> computeDifference(vector<float> *colorFeatureVector, vector<vector<float>> *histogramLBP, ifstream& featuresFile) {
+    
+    unordered_map<string, vector<float>> imageNameToAllFeatures;
+    vector<pair<float, string>> imageNameToDistance;
+    vector<float> allFeatures;
+    
+    combineVectors(&allFeatures, colorFeatureVector, histogramLBP);
+    
+    vector<float> histogramLBPVector;
+    getAllFeaturesFromFile(&imageNameToAllFeatures, featuresFile);
+    for(auto& entry : imageNameToAllFeatures) {
+        pair<float, string> entryPair;
+        entryPair.second = entry.first;
+        entryPair.first = computeEuclidianDistance(&allFeatures, &entry.second);
+        imageNameToDistance.push_back(entryPair);
+    }
+    sortImagesByDifference(&imageNameToDistance);
+    return imageNameToDistance;
+}
+
+int getImageNumberFromPath(const char *inputImagePath) {
+    string sInputImagePath = string(inputImagePath, strlen(inputImagePath));
+    istringstream iss(sInputImagePath);
+    string token;
+    vector<string> splitPath;
+    while (getline(iss, token, '/')) {
+        splitPath.push_back(token);
+    }
+    return stoi(splitPath.at(splitPath.size() - 1));
+}
+
+int getImageNumberFromName(string *imageName) {
+    istringstream iss(*imageName);
+    string token;
+    vector<string> splitName;
+    while (getline(iss, token, '.')) {
+        splitName.push_back(token);
+    }
+    return stoi(splitName.at(0));
+}
+
+void showStatistics(const char *inputImagePath, vector<pair<float, string>> imageDistanceResults) {
+    int imageNumber, currentImageNumber;
+    imageNumber = getImageNumberFromPath(inputImagePath);
+                   
+    cout << "Input image: " << to_string(imageNumber) << endl;
+    
+    int imageClass;
+    imageClass = (imageNumber / 100) * 100;
+    
+    int i, sum = 0;
+    for (i = 0; i < 10; i++) {
+        pair<float, string> currentEntry;
+        currentEntry = imageDistanceResults.at(i);
+        currentImageNumber = getImageNumberFromName(&currentEntry.second);
+        if (currentImageNumber >= imageClass && currentImageNumber <= imageClass + 100) {
+            sum++;
+        }
+    }
+    
+    cout << "Precision: " << ((float) sum/10)*100 << "%" << endl;
+    cout << endl;
 }
 
 
@@ -447,6 +587,7 @@ void findSimilarImages(char const *inputImagePath, SearchMode mode) {
     vector<vector<vector<float>>> percentile(numberOfDivisions, vector<vector<float>>(3, vector<float>(11)));
     vector<float> colorFeatureVector;
     vector<vector<float>> histogramLBP(numberOfDivisions, vector<float>(256));
+    vector<pair<float, string>> imageDistanceResults;
     
     IplImage *inputImage = cvLoadImage(inputImagePath, CV_LOAD_IMAGE_COLOR);
     IplImage *currentImageGrayscale = convertToGrayscale(inputImage);
@@ -465,20 +606,20 @@ void findSimilarImages(char const *inputImagePath, SearchMode mode) {
     if (mode == COLOR_HISTOGRAM) {
         buildColorPercentile(&histogram, &percentile, inputImage, &imageDivisions, &sc);
         buildColorFeatureVector(&percentile, &colorFeatureVector);
-        
-        computeDifference(&colorFeatureVector, featuresFile);
+        imageDistanceResults = computeDifference(&colorFeatureVector, featuresFile);
+        showStatistics(inputImagePath, imageDistanceResults);
     }
     if (mode == LOCAL_BINARY_PATTERN) {
         buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
-        
-        computeDifference(&histogramLBP, featuresFile);
+        imageDistanceResults = computeDifference(&histogramLBP, featuresFile);
+        showStatistics(inputImagePath, imageDistanceResults);
     }
     if (mode == ALL_MODES) {
         buildColorPercentile(&histogram, &percentile, inputImage, &imageDivisions, &sc);
         buildColorFeatureVector(&percentile, &colorFeatureVector);
         buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
-        
-        computeDifference(&colorFeatureVector, &histogramLBP, featuresFile);
+        imageDistanceResults = computeDifference(&colorFeatureVector, &histogramLBP, featuresFile);
+        showStatistics(inputImagePath, imageDistanceResults);
     }
     
     featuresFile.close();
@@ -568,8 +709,15 @@ int main(int argc, char const *argv[]) {
             // Usage: --all path_to_image
             else if (strcmp(argv[1], "--all") == 0) {
                 findSimilarImages(argv[2], ALL_MODES);
-            } else {
-                cerr << "Invalid argument option: " << argv[1] << ". Usage: [--color, --lbp, --all] [path_to_image]" << endl;
+            }
+            
+            // Run a banchmark test to get the system precision for a given set of images
+            // Usage: --benchmark
+            else if (strcmp(argv[1], "--benchmark") == 0) {
+                
+            }
+            else {
+                cerr << "Invalid argument option: " << argv[1] << ". Usage: [--color, --lbp, --all] [path_to_image] or [--benchmark]" << endl;
                 return 0;
             }
         } else {
