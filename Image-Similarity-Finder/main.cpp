@@ -37,7 +37,7 @@ enum SearchMode {
 /* Constants                                                             */
 
 const DivisionType numberOfDivisions = TWO_BY_TWO;
-const int numberOfImages = 100;
+const int numberOfImages = 1000;
 
 /* --------------------------------------------------------------------- */
 /* Structs                                                               */
@@ -406,7 +406,6 @@ void getColorFeatureVector(unordered_map<string, vector<float>> *imageNameToFeat
         (*imageNameToFeatures)[imageFileName] = fileColorFeatureVector;
         getline(featuresFile, temp);
     }
-    cout << "asd" << endl;
 }
 
 float computeEuclidianDistance(vector<float> *colorFeatureVector, vector<float> *mappedFeatureVector) {
@@ -417,19 +416,21 @@ float computeEuclidianDistance(vector<float> *colorFeatureVector, vector<float> 
     return sqrt(sum);
 }
 
+void sortImagesByDifference(vector<pair<float, string>> *imageNameToDistance) {
+    sort(imageNameToDistance->begin(), imageNameToDistance->end());
+}
+
 void computeDifference(vector<float> *colorFeatureVector, ifstream& featuresFile) {
     unordered_map<string, vector<float>> imageNameToFeatures;
-    map<string, float> imageNameToDistance;
+    vector<pair<float, string>> imageNameToDistance;
     getColorFeatureVector(&imageNameToFeatures, featuresFile);
     for (auto& entry : imageNameToFeatures) {
-        // cout << entry.first << endl;
-        if (entry.first == "4.jpg") {
-            cout << "asd" << endl;
-        }
-        imageNameToDistance[entry.first] = computeEuclidianDistance(colorFeatureVector, &entry.second);
+        pair<float, string> entryPair;
+        entryPair.second = entry.first;
+        entryPair.first = computeEuclidianDistance(colorFeatureVector, &entry.second);
+        imageNameToDistance.push_back(entryPair);
     }
-    // rank images based on the difference
-    cout << "asd" << endl;
+    sortImagesByDifference(&imageNameToDistance);
 }
 
 void computeDifference(vector<vector<float>> *histogramLBP, ifstream& featuresFile) {
@@ -502,9 +503,7 @@ int main(int argc, char const *argv[]) {
             CvScalar sc;
             string imagePath;
             ostringstream oss;
-            //string imageFolderPath = "/Users/lucas/Documents/Fall 2016/opencv_images/";
             string imageFolderPath = argv[2];
-            //string imageExtension = "jpg";
             string imageExtension = argv[3];
             
             vector<string> fileNames {"DEBUG_normalizedHistogram.txt", "DEBUG_normalizedPercentile.txt", "features.txt", "DEBUG_histogramLBP.txt"};
@@ -520,22 +519,12 @@ int main(int argc, char const *argv[]) {
                 imagePath = oss.str();
                 currentImage = cvLoadImage(imagePath.c_str(), CV_LOAD_IMAGE_COLOR);
                 
-                if (image == 4) {
-                    cout << "asd";
-                }
                 buildColorPercentile(&histogram, &percentile, currentImage, &imageDivisions, &sc);
                 
                 saveFile(&histogram, outputFileHistogram, &image);
                 saveFile(&percentile, outputFilePercentile, &image);
                 
-                if (image == 4) {
-                    cout << "asd";
-                }
                 buildColorFeatureVector(&percentile, &colorFeatureVector);
-                
-                if (image == 4) {
-                    cout << "asd";
-                }
                 
                 currentImageGrayscale = convertToGrayscale(currentImage);
                 buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
@@ -555,6 +544,7 @@ int main(int argc, char const *argv[]) {
             outputFilePercentile.close();
             outputFileHistogramLBP.close();
             outputFileFeatures.close();
+            
         } else {
             cerr << "Invalid arguments for --build. Usage: --build [path_to_images] [images_extension]" << endl;
             return 0;
