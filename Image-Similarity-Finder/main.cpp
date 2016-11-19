@@ -573,7 +573,7 @@ void showStatistics(const char *inputImagePath, vector<pair<float, string>> imag
     int imageNumber, currentImageNumber;
     imageNumber = getImageNumberFromPath(inputImagePath);
                    
-    cout << "Input image: " << to_string(imageNumber) << endl;
+    cout << "Image: " << to_string(imageNumber) << ", ";
     
     int imageClass;
     imageClass = (imageNumber / 100) * 100;
@@ -649,7 +649,7 @@ void findSimilarImages(char const *inputImagePath, SearchMode mode, bool benchma
 
 int randomImageNumber(int imageClass, int iterationNumber, vector<int> *numbersUsed) {
     int randomNumber = 0;
-    srand (time(NULL));
+    srand(time(NULL));
     randomNumber = rand() % 100 + (imageClass * 100);
     if (find(numbersUsed->begin(), numbersUsed->end(), randomNumber) != numbersUsed->end()) {
         randomNumber = randomImageNumber(imageClass, iterationNumber, numbersUsed);
@@ -672,7 +672,7 @@ void populateImageClassesPrecisionVector(string *line, vector<float> *imageClass
     
 }
 
-void processBenchmarkPartialResults(string *partialBenchmarkResultsFileName, string *benchmarkResultsFileName) {
+void processBenchmarkPartialResults(string *partialBenchmarkResultsFileName, string *benchmarkResultsFileName, int benchmarkIterations, int samplesByClass) {
     
     ifstream partialBenchmarkResultsFile;
     partialBenchmarkResultsFile = openFile(partialBenchmarkResultsFileName);
@@ -694,7 +694,7 @@ void processBenchmarkPartialResults(string *partialBenchmarkResultsFileName, str
     
     int i;
     for (i = 0; i < imageClassesPrecision.size(); i++) {
-        imageClassesPrecision.at(i) = imageClassesPrecision.at(i) / 100;
+        imageClassesPrecision.at(i) = imageClassesPrecision.at(i) / (benchmarkIterations * samplesByClass);
         outputFileBenchmark << i << "," << imageClassesPrecision.at(i) << endl;
     }
     
@@ -702,25 +702,31 @@ void processBenchmarkPartialResults(string *partialBenchmarkResultsFileName, str
     outputFileBenchmark.close();
 }
 
-void runRandomImagesTests(string *imageFolderPath) {
+void runRandomImagesTests(string *imageFolderPath, int benchmarkIterations, int samplesByClass, SearchMode mode) {
     int i, j, k;
     vector<int> numbersUsed;
-    for (k = 0; k < 10; k++) {
+    for (k = 0; k < benchmarkIterations; k++) {
         for (i = 0; i < 10; i++) {
-            for (j = 0; j < 10; j++) {
+            for (j = 0; j < samplesByClass; j++) {
                 int imageNumber;
                 imageNumber = randomImageNumber(i, j, &numbersUsed);
                 numbersUsed.push_back(imageNumber);
                 string fullImagePath;
                 fullImagePath = *imageFolderPath + to_string(imageNumber) + ".jpg";
-                findSimilarImages(fullImagePath.c_str(), LOCAL_BINARY_PATTERN, true);
+                if (mode == ALL_MODES) {
+                    findSimilarImages(fullImagePath.c_str(), ALL_MODES, true);
+                } else if (mode == COLOR_HISTOGRAM) {
+                    findSimilarImages(fullImagePath.c_str(), COLOR_HISTOGRAM, true);
+                } else if (mode == LOCAL_BINARY_PATTERN) {
+                    findSimilarImages(fullImagePath.c_str(), LOCAL_BINARY_PATTERN, true);
+                }
             }
             numbersUsed.clear();
         }
     }
 }
 
-void runBenchmark(string imageFolderPath) {
+void runBenchmark(SearchMode mode, string imageFolderPath) {
     string featuresFilePath = "./features.txt";
     ifstream featuresFile;
     featuresFile = openFile(&featuresFilePath);
@@ -731,13 +737,15 @@ void runBenchmark(string imageFolderPath) {
     }
     
     string partialResultsFileName = "benchmarkPartialResults.csv";
-    //vector<string> fileNames {"benchmarkPartialResults.csv", "benchmarkResults.csv"};
-    vector<string> fileNames {"benchmarkResults.csv"};
+    vector<string> fileNames {"benchmarkPartialResults.csv", "benchmarkResults.csv"};
+    //vector<string> fileNames {"benchmarkResults.csv"};
     removeOldFiles(&fileNames);
     
-    // runRandomImagesTests(&imageFolderPath);
+    int benchmarkIterations = 1;
+    int samplesByClass = 25;
+    runRandomImagesTests(&imageFolderPath, benchmarkIterations, samplesByClass, mode);
     
-    processBenchmarkPartialResults(&partialResultsFileName, &fileNames.at(0));
+    processBenchmarkPartialResults(&partialResultsFileName, &fileNames.at(1), benchmarkIterations, samplesByClass);
 }
 
 
@@ -805,7 +813,7 @@ int main(int argc, char const *argv[]) {
             return 0;
         }
     } else {
-        if (argc == 3) {
+        if (argc == 3 || strcmp(argv[1], "--benchmark") == 0) {
             
             // Compare a given image to a set of images using color histogram comparison
             // Usage: --color path_to_image
@@ -826,12 +834,21 @@ int main(int argc, char const *argv[]) {
             }
             
             // Run a benchmark test to get the system precision for a given set of images
-            // Usage: --benchmark
+            // Usage: --benchmark [mode] path_to_image_folder
             else if (strcmp(argv[1], "--benchmark") == 0) {
-                runBenchmark(string(argv[2], strlen(argv[2])));
+                if (strcmp(argv[2], "--color") == 0) {
+                    runBenchmark(COLOR_HISTOGRAM, string(argv[3], strlen(argv[3])));
+                } else if (strcmp(argv[2], "--lbp") == 0) {
+                    runBenchmark(LOCAL_BINARY_PATTERN, string(argv[3], strlen(argv[3])));
+                } else if (strcmp(argv[2], "--all") == 0) {
+                    runBenchmark(ALL_MODES, string(argv[3], strlen(argv[3])));
+                } else {
+                    cerr << "Invalid argument option: " << argv[1] << ". Usage: [--benchmark] [--color, --lbp, --all] [path_to_image_folder]" << endl;
+                    return 0;
+                }
             }
             else {
-                cerr << "Invalid argument option: " << argv[1] << ". Usage: [--color, --lbp, --all] [path_to_image] or [--benchmark] [path_to_image_folder]" << endl;
+                cerr << "Invalid argument option: " << argv[1] << ". Usage: [--color, --lbp, --all] [path_to_image] or [--benchmark] [--color, --lbp, --all] [path_to_image_folder]" << endl;
                 return 0;
             }
         } else {
