@@ -558,7 +558,11 @@ int getImageNumberFromName(string *imageName) {
     return stoi(splitName.at(0));
 }
 
-void showStatistics(const char *inputImagePath, vector<pair<float, string>> imageDistanceResults) {
+void saveBenchmarkFile(int *imageNumber, float *precision, ofstream& outputFile) {
+    outputFile << *imageNumber << "," << *precision << "," << (int)(*imageNumber)/100 << endl;
+}
+
+void showStatistics(const char *inputImagePath, vector<pair<float, string>> imageDistanceResults, bool benchmark) {
     int imageNumber, currentImageNumber;
     imageNumber = getImageNumberFromPath(inputImagePath);
                    
@@ -577,8 +581,18 @@ void showStatistics(const char *inputImagePath, vector<pair<float, string>> imag
         }
     }
     
-    cout << "Precision: " << ((float) sum/10)*100 << "%" << endl;
+    float precision = (float) sum/10;
+    cout << "Precision: " << precision*100 << "%" << endl;
+    
+    if (benchmark == true) {
+        ofstream outputFileBenchmark;
+        outputFileBenchmark.open("benchmarkResults.txt", ios::app);
+        saveBenchmarkFile(&imageNumber, &precision, outputFileBenchmark);
+        outputFileBenchmark.close();
+    }
+    
 }
+
 
 ifstream openFeaturesFile(string *featuresFilePath) {
     ifstream featuresFile;
@@ -611,22 +625,19 @@ void findSimilarImages(char const *inputImagePath, SearchMode mode, bool benchma
         buildColorPercentile(&histogram, &percentile, inputImage, &imageDivisions, &sc);
         buildColorFeatureVector(&percentile, &colorFeatureVector);
         imageDistanceResults = computeDifference(&colorFeatureVector, featuresFile);
-        showStatistics(inputImagePath, imageDistanceResults);
+        showStatistics(inputImagePath, imageDistanceResults, benchmark);
     }
     if (mode == LOCAL_BINARY_PATTERN) {
         buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
         imageDistanceResults = computeDifference(&histogramLBP, featuresFile);
-        showStatistics(inputImagePath, imageDistanceResults);
-        if (benchmark == true) {
-            // to do
-        }
+        showStatistics(inputImagePath, imageDistanceResults, benchmark);
     }
     if (mode == ALL_MODES) {
         buildColorPercentile(&histogram, &percentile, inputImage, &imageDivisions, &sc);
         buildColorFeatureVector(&percentile, &colorFeatureVector);
         buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
         imageDistanceResults = computeDifference(&colorFeatureVector, &histogramLBP, featuresFile);
-        showStatistics(inputImagePath, imageDistanceResults);
+        showStatistics(inputImagePath, imageDistanceResults, benchmark);
     }
     
     featuresFile.close();
@@ -653,7 +664,8 @@ void runBenchmark(string imageFolderPath) {
         return;
     }
     
-    //findSimilarImages("", LOCAL_BINARY_PATTERN, true);
+    vector<string> fileNames {"benchmarkPartialResults.txt"};
+    removeOldFiles(&fileNames);
 
     int i, j;
     vector<int> numbersUsed;
@@ -667,7 +679,6 @@ void runBenchmark(string imageFolderPath) {
             findSimilarImages(fullImagePath.c_str(), LOCAL_BINARY_PATTERN, true);
         }
         numbersUsed.clear();
-        cout << endl;
     }
     
 }
