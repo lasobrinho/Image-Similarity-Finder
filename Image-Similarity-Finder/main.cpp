@@ -559,7 +559,14 @@ int getImageNumberFromName(string *imageName) {
 }
 
 void saveBenchmarkFile(int *imageNumber, float *precision, ofstream& outputFile) {
-    outputFile << *imageNumber << "," << *precision << "," << (int)(*imageNumber)/100 << endl;
+    outputFile << (int)(*imageNumber)/100 << "," << *precision << endl;
+}
+
+void savePartialBenchmarkStatistics(int *imageNumber, float *precision) {
+    ofstream outputFileBenchmark;
+    outputFileBenchmark.open("benchmarkPartialResults.csv", ios::app);
+    saveBenchmarkFile(imageNumber, precision, outputFileBenchmark);
+    outputFileBenchmark.close();
 }
 
 void showStatistics(const char *inputImagePath, vector<pair<float, string>> imageDistanceResults, bool benchmark) {
@@ -585,19 +592,16 @@ void showStatistics(const char *inputImagePath, vector<pair<float, string>> imag
     cout << "Precision: " << precision*100 << "%" << endl;
     
     if (benchmark == true) {
-        ofstream outputFileBenchmark;
-        outputFileBenchmark.open("benchmarkResults.txt", ios::app);
-        saveBenchmarkFile(&imageNumber, &precision, outputFileBenchmark);
-        outputFileBenchmark.close();
+        savePartialBenchmarkStatistics(&imageNumber, &precision);
     }
     
 }
 
 
-ifstream openFeaturesFile(string *featuresFilePath) {
-    ifstream featuresFile;
-    featuresFile.open(*featuresFilePath);
-    return featuresFile;
+ifstream openFile(string *filePath) {
+    ifstream file;
+    file.open(*filePath);
+    return file;
 }
 
 void findSimilarImages(char const *inputImagePath, SearchMode mode, bool benchmark) {
@@ -614,7 +618,7 @@ void findSimilarImages(char const *inputImagePath, SearchMode mode, bool benchma
     
     string featuresFilePath = "./features.txt";
     ifstream featuresFile;
-    featuresFile = openFeaturesFile(&featuresFilePath);
+    featuresFile = openFile(&featuresFilePath);
     if(!featuresFile.is_open()) {
         cerr << "Error opening file " << featuresFilePath << endl;
         // return 0 instead of just returning nothing at all
@@ -653,34 +657,87 @@ int randomImageNumber(int imageClass, int iterationNumber, vector<int> *numbersU
     return randomNumber;
 }
 
-void runBenchmark(string imageFolderPath) {
+void populateImageClassesPrecisionVector(string *line, vector<float> *imageClassesPrecision) {
+    istringstream iss(*line);
+    string token;
+    vector<string> splitLine;
+    while (getline(iss, token, ',')) {
+        splitLine.push_back(token);
+    }
     
+    int imageClass = stoi(splitLine.at(0));
+    float precision = strtof(splitLine.at(1).c_str(), NULL);
+    
+    imageClassesPrecision->at(imageClass) = imageClassesPrecision->at(imageClass) + precision;
+    
+}
+
+void processBenchmarkPartialResults(string *partialBenchmarkResultsFileName, string *benchmarkResultsFileName) {
+    
+    ifstream partialBenchmarkResultsFile;
+    partialBenchmarkResultsFile = openFile(partialBenchmarkResultsFileName);
+    if(!partialBenchmarkResultsFile.is_open()) {
+        cerr << "Error opening file " << *partialBenchmarkResultsFileName << endl;
+        // return 0 instead of just returning nothing at all
+        return;
+    }
+    
+    vector<float> imageClassesPrecision(10, 0.0);
+    string line;
+    
+    while (getline(partialBenchmarkResultsFile, line)) {
+        populateImageClassesPrecisionVector(&line, &imageClassesPrecision);
+    }
+    
+    ofstream outputFileBenchmark;
+    outputFileBenchmark.open(*benchmarkResultsFileName, ios::app);
+    
+    int i;
+    for (i = 0; i < imageClassesPrecision.size(); i++) {
+        imageClassesPrecision.at(i) = imageClassesPrecision.at(i) / 100;
+        outputFileBenchmark << i << "," << imageClassesPrecision.at(i) << endl;
+    }
+    
+    partialBenchmarkResultsFile.close();
+    outputFileBenchmark.close();
+}
+
+void runRandomImagesTests(string *imageFolderPath) {
+    int i, j, k;
+    vector<int> numbersUsed;
+    for (k = 0; k < 10; k++) {
+        for (i = 0; i < 10; i++) {
+            for (j = 0; j < 10; j++) {
+                int imageNumber;
+                imageNumber = randomImageNumber(i, j, &numbersUsed);
+                numbersUsed.push_back(imageNumber);
+                string fullImagePath;
+                fullImagePath = *imageFolderPath + to_string(imageNumber) + ".jpg";
+                findSimilarImages(fullImagePath.c_str(), LOCAL_BINARY_PATTERN, true);
+            }
+            numbersUsed.clear();
+        }
+    }
+}
+
+void runBenchmark(string imageFolderPath) {
     string featuresFilePath = "./features.txt";
     ifstream featuresFile;
-    featuresFile = openFeaturesFile(&featuresFilePath);
+    featuresFile = openFile(&featuresFilePath);
     if(!featuresFile.is_open()) {
         cerr << "Error opening file " << featuresFilePath << endl;
         // return 0 instead of just returning nothing at all
         return;
     }
     
-    vector<string> fileNames {"benchmarkResults.txt"};
+    string partialResultsFileName = "benchmarkPartialResults.csv";
+    //vector<string> fileNames {"benchmarkPartialResults.csv", "benchmarkResults.csv"};
+    vector<string> fileNames {"benchmarkResults.csv"};
     removeOldFiles(&fileNames);
-
-    int i, j;
-    vector<int> numbersUsed;
-    for (i = 0; i < 10; i++) {
-        for (j = 0; j < 10; j++) {
-            int imageNumber;
-            imageNumber = randomImageNumber(i, j, &numbersUsed);
-            numbersUsed.push_back(imageNumber);
-            string fullImagePath;
-            fullImagePath = fullImagePath + imageFolderPath + to_string(imageNumber) + ".jpg";
-            findSimilarImages(fullImagePath.c_str(), LOCAL_BINARY_PATTERN, true);
-        }
-        numbersUsed.clear();
-    }
     
+    // runRandomImagesTests(&imageFolderPath);
+    
+    processBenchmarkPartialResults(&partialResultsFileName, &fileNames.at(0));
 }
 
 
