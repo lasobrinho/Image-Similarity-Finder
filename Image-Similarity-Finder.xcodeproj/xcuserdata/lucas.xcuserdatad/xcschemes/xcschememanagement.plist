@@ -4,10 +4,15 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
-		<key>BUILDER_Image-Similarity-Finder.xcscheme</key>
+		<key>BENCHMARK_Image-Similarity-Finder.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>1</integer>
+		</dict>
+		<key>BUILDER_Image-Similarity-Finder.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>0</integer>
 		</dict>
 		<key>FINDER_Image-Similarity-Finder.xcscheme</key>
 		<dict>

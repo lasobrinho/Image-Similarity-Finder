@@ -578,11 +578,15 @@ void showStatistics(const char *inputImagePath, vector<pair<float, string>> imag
     }
     
     cout << "Precision: " << ((float) sum/10)*100 << "%" << endl;
-    cout << endl;
 }
 
+ifstream openFeaturesFile(string *featuresFilePath) {
+    ifstream featuresFile;
+    featuresFile.open(*featuresFilePath);
+    return featuresFile;
+}
 
-void findSimilarImages(char const *inputImagePath, SearchMode mode) {
+void findSimilarImages(char const *inputImagePath, SearchMode mode, bool benchmark) {
     vector<vector<vector<float>>> histogram(numberOfDivisions, vector<vector<float>>(3, vector<float>(256)));
     vector<vector<vector<float>>> percentile(numberOfDivisions, vector<vector<float>>(3, vector<float>(11)));
     vector<float> colorFeatureVector;
@@ -596,7 +600,7 @@ void findSimilarImages(char const *inputImagePath, SearchMode mode) {
     
     string featuresFilePath = "./features.txt";
     ifstream featuresFile;
-    featuresFile.open(featuresFilePath);
+    featuresFile = openFeaturesFile(&featuresFilePath);
     if(!featuresFile.is_open()) {
         cerr << "Error opening file " << featuresFilePath << endl;
         // return 0 instead of just returning nothing at all
@@ -613,6 +617,9 @@ void findSimilarImages(char const *inputImagePath, SearchMode mode) {
         buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
         imageDistanceResults = computeDifference(&histogramLBP, featuresFile);
         showStatistics(inputImagePath, imageDistanceResults);
+        if (benchmark == true) {
+            // to do
+        }
     }
     if (mode == ALL_MODES) {
         buildColorPercentile(&histogram, &percentile, inputImage, &imageDivisions, &sc);
@@ -623,6 +630,45 @@ void findSimilarImages(char const *inputImagePath, SearchMode mode) {
     }
     
     featuresFile.close();
+}
+
+int randomImageNumber(int imageClass, int iterationNumber, vector<int> *numbersUsed) {
+    int randomNumber = 0;
+    srand (time(NULL));
+    randomNumber = rand() % 100 + (imageClass * 100);
+    if (find(numbersUsed->begin(), numbersUsed->end(), randomNumber) != numbersUsed->end()) {
+        randomNumber = randomImageNumber(imageClass, iterationNumber, numbersUsed);
+    }
+    return randomNumber;
+}
+
+void runBenchmark(string imageFolderPath) {
+    
+    string featuresFilePath = "./features.txt";
+    ifstream featuresFile;
+    featuresFile = openFeaturesFile(&featuresFilePath);
+    if(!featuresFile.is_open()) {
+        cerr << "Error opening file " << featuresFilePath << endl;
+        // return 0 instead of just returning nothing at all
+        return;
+    }
+    
+    //findSimilarImages("", LOCAL_BINARY_PATTERN, true);
+
+    int i, j;
+    vector<int> numbersUsed;
+    for (i = 0; i < 10; i++) {
+        for (j = 0; j < 10; j++) {
+            int imageNumber;
+            imageNumber = randomImageNumber(i, j, &numbersUsed);
+            numbersUsed.push_back(imageNumber);
+            string fullImagePath;
+            fullImagePath = fullImagePath + imageFolderPath + to_string(imageNumber) + ".jpg";
+            findSimilarImages(fullImagePath.c_str(), LOCAL_BINARY_PATTERN, true);
+        }
+        numbersUsed.clear();
+        cout << endl;
+    }
     
 }
 
@@ -696,28 +742,28 @@ int main(int argc, char const *argv[]) {
             // Compare a given image to a set of images using color histogram comparison
             // Usage: --color path_to_image
             if (strcmp(argv[1], "--color") == 0) {
-                findSimilarImages(argv[2], COLOR_HISTOGRAM);
+                findSimilarImages(argv[2], COLOR_HISTOGRAM, false);
             }
         
             // Compare a given image to a set of images using Local Binary Pattern (LBP) method
             // Usage: --lbp path_to_image
             else if (strcmp(argv[1], "--lbp") == 0) {
-                findSimilarImages(argv[2], LOCAL_BINARY_PATTERN);
+                findSimilarImages(argv[2], LOCAL_BINARY_PATTERN, false);
             }
         
             // Compare a given image using both color histogram and LBP methods
             // Usage: --all path_to_image
             else if (strcmp(argv[1], "--all") == 0) {
-                findSimilarImages(argv[2], ALL_MODES);
+                findSimilarImages(argv[2], ALL_MODES, false);
             }
             
-            // Run a banchmark test to get the system precision for a given set of images
+            // Run a benchmark test to get the system precision for a given set of images
             // Usage: --benchmark
             else if (strcmp(argv[1], "--benchmark") == 0) {
-                
+                runBenchmark(string(argv[2], strlen(argv[2])));
             }
             else {
-                cerr << "Invalid argument option: " << argv[1] << ". Usage: [--color, --lbp, --all] [path_to_image] or [--benchmark]" << endl;
+                cerr << "Invalid argument option: " << argv[1] << ". Usage: [--color, --lbp, --all] [path_to_image] or [--benchmark] [path_to_image_folder]" << endl;
                 return 0;
             }
         } else {
