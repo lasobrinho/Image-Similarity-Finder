@@ -664,7 +664,7 @@ void runBenchmark(string imageFolderPath) {
         return;
     }
     
-    vector<string> fileNames {"benchmarkPartialResults.txt"};
+    vector<string> fileNames {"benchmarkResults.txt"};
     removeOldFiles(&fileNames);
 
     int i, j;
