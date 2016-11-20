@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <map>
 #include <sstream>
+#include <iomanip>
 
 using namespace std;
 
@@ -111,6 +112,11 @@ void populateHistogram(vector<vector<vector<float>>> *histogram,
                        Point2D_INT *pixelPosition)
 {
     int divisionNumber = getDivisionNumber(imageDivisions, pixelPosition);
+    double temp = 0;
+    temp = sc->val[2];
+    sc->val[2] = sc->val[0];
+    sc->val[0] = temp;
+    
     for (int c = 0; c < 3; c++) {
         histogram->at(divisionNumber).at(c).at((int) sc->val[c])++;
     }
@@ -572,26 +578,38 @@ void savePartialBenchmarkStatistics(int *imageNumber, float *precision) {
 void showStatistics(const char *inputImagePath, vector<pair<float, string>> imageDistanceResults, bool benchmark) {
     int imageNumber, currentImageNumber;
     imageNumber = getImageNumberFromPath(inputImagePath);
-                   
-    cout << "Image: " << to_string(imageNumber) << ", ";
     
     int imageClass;
     imageClass = (imageNumber / 100) * 100;
     
+    int rankLimit = 10;
+    
+    if (!benchmark) {
+        cout << "Top 10 Images:" << endl;
+    }
+    
     int i, sum = 0;
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < rankLimit; i++) {
         pair<float, string> currentEntry;
         currentEntry = imageDistanceResults.at(i);
         currentImageNumber = getImageNumberFromName(&currentEntry.second);
         if (currentImageNumber >= imageClass && currentImageNumber <= imageClass + 100) {
             sum++;
         }
+        if (!benchmark) {
+            cout << "\t" << currentEntry.second << endl;
+        }
     }
     
-    float precision = (float) sum/10;
-    cout << "Precision: " << precision*100 << "%" << endl;
+    float precision = (float) sum/rankLimit;
     
-    if (benchmark == true) {
+    if (!benchmark) {
+        cout << "Final Result:" << endl;
+        cout << "\tInput image:\t" << to_string(imageNumber) << ".jpg" << endl;
+        cout << "\tPrecision:\t\t" << precision*100 << "%" << endl;
+    }
+    
+    if (benchmark) {
         savePartialBenchmarkStatistics(&imageNumber, &precision);
     }
     
@@ -621,7 +639,6 @@ void findSimilarImages(char const *inputImagePath, SearchMode mode, bool benchma
     featuresFile = openFile(&featuresFilePath);
     if(!featuresFile.is_open()) {
         cerr << "Error opening file " << featuresFilePath << endl;
-        // return 0 instead of just returning nothing at all
         return;
     }
     
@@ -647,11 +664,10 @@ void findSimilarImages(char const *inputImagePath, SearchMode mode, bool benchma
     featuresFile.close();
 }
 
-int randomImageNumber(int imageClass, int iterationNumber, vector<int> *numbersUsed) {
+int randomImageNumber(int imageClass, int iterationNumber, vector<int> numbersUsed) {
     int randomNumber = 0;
-    srand(time(NULL));
     randomNumber = rand() % 100 + (imageClass * 100);
-    if (find(numbersUsed->begin(), numbersUsed->end(), randomNumber) != numbersUsed->end()) {
+    if (find(numbersUsed.begin(), numbersUsed.end(), randomNumber) != numbersUsed.end()) {
         randomNumber = randomImageNumber(imageClass, iterationNumber, numbersUsed);
     }
     return randomNumber;
@@ -678,7 +694,6 @@ void processBenchmarkPartialResults(string *partialBenchmarkResultsFileName, str
     partialBenchmarkResultsFile = openFile(partialBenchmarkResultsFileName);
     if(!partialBenchmarkResultsFile.is_open()) {
         cerr << "Error opening file " << *partialBenchmarkResultsFileName << endl;
-        // return 0 instead of just returning nothing at all
         return;
     }
     
@@ -704,12 +719,16 @@ void processBenchmarkPartialResults(string *partialBenchmarkResultsFileName, str
 
 void runRandomImagesTests(string *imageFolderPath, int benchmarkIterations, int samplesByClass, SearchMode mode) {
     int i, j, k;
+    int imageNumber;
     vector<int> numbersUsed;
+    int totalIterations = samplesByClass * benchmarkIterations * 10;
+    int progress = 0;
+    
     for (k = 0; k < benchmarkIterations; k++) {
         for (i = 0; i < 10; i++) {
             for (j = 0; j < samplesByClass; j++) {
-                int imageNumber;
-                imageNumber = randomImageNumber(i, j, &numbersUsed);
+                cout << "Progress: " << fixed << setprecision(1) << ((float) progress / totalIterations) * 100 << "%" << "\r" << flush;
+                imageNumber = randomImageNumber(i, j, numbersUsed);
                 numbersUsed.push_back(imageNumber);
                 string fullImagePath;
                 fullImagePath = *imageFolderPath + to_string(imageNumber) + ".jpg";
@@ -720,10 +739,12 @@ void runRandomImagesTests(string *imageFolderPath, int benchmarkIterations, int 
                 } else if (mode == LOCAL_BINARY_PATTERN) {
                     findSimilarImages(fullImagePath.c_str(), LOCAL_BINARY_PATTERN, true);
                 }
+                progress++;
             }
             numbersUsed.clear();
         }
     }
+    cout << "Progress: " << fixed << setprecision(1) << ((float) progress / totalIterations) * 100 << "%" << "\r" << flush;
 }
 
 void runBenchmark(SearchMode mode, string imageFolderPath) {
@@ -732,20 +753,29 @@ void runBenchmark(SearchMode mode, string imageFolderPath) {
     featuresFile = openFile(&featuresFilePath);
     if(!featuresFile.is_open()) {
         cerr << "Error opening file " << featuresFilePath << endl;
-        // return 0 instead of just returning nothing at all
         return;
     }
     
     string partialResultsFileName = "benchmarkPartialResults.csv";
-    vector<string> fileNames {"benchmarkPartialResults.csv", "benchmarkResults.csv"};
-    //vector<string> fileNames {"benchmarkResults.csv"};
+    string benchmarkResultsFileName = "benchmarkResults.csv";
+    
+    vector<string> fileNames;
+    bool rebuildPartialResults = true;
+    if (rebuildPartialResults == true) {
+        fileNames.push_back(partialResultsFileName);
+    }
+    fileNames.push_back(benchmarkResultsFileName);
     removeOldFiles(&fileNames);
     
     int benchmarkIterations = 1;
-    int samplesByClass = 25;
-    runRandomImagesTests(&imageFolderPath, benchmarkIterations, samplesByClass, mode);
+    int samplesByClass = 10;
     
-    processBenchmarkPartialResults(&partialResultsFileName, &fileNames.at(1), benchmarkIterations, samplesByClass);
+    if (rebuildPartialResults == true) {
+        srand(time(NULL));
+        runRandomImagesTests(&imageFolderPath, benchmarkIterations, samplesByClass, mode);
+    }
+    
+    processBenchmarkPartialResults(&partialResultsFileName, &benchmarkResultsFileName, benchmarkIterations, samplesByClass);
 }
 
 
