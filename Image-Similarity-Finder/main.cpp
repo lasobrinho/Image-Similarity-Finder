@@ -150,7 +150,6 @@ void saveFile(vector<vector<vector<float>>> *file, ofstream& outputFile, int *im
 
 void saveFeaturesFile(vector<float> *features, vector<vector<float>> *histogramLBP, ofstream& outputFile, int *image) {
     outputFile << *image << ".jpg" << endl;
-    
     outputFile << fixed;
     outputFile.precision(10);
     
@@ -527,7 +526,6 @@ void combineVectors(vector<float> *allFeatures, vector<float> *colorFeatureVecto
 }
 
 vector<pair<float, string>> computeDifference(vector<float> *colorFeatureVector, vector<vector<float>> *histogramLBP, ifstream& featuresFile) {
-    
     unordered_map<string, vector<float>> imageNameToAllFeatures;
     vector<pair<float, string>> imageNameToDistance;
     vector<float> allFeatures;
@@ -615,7 +613,6 @@ void showStatistics(const char *inputImagePath, vector<pair<float, string>> imag
     if (benchmark) {
         savePartialBenchmarkStatistics(&imageNumber, &precision);
     }
-    
 }
 
 
@@ -688,11 +685,9 @@ void populateImageClassesPrecisionVector(string *line, vector<float> *imageClass
     float precision = strtof(splitLine.at(1).c_str(), NULL);
     
     imageClassesPrecision->at(imageClass) = imageClassesPrecision->at(imageClass) + precision;
-    
 }
 
 void processBenchmarkPartialResults(string *partialBenchmarkResultsFileName, string *benchmarkResultsFileName, int benchmarkIterations, int samplesByClass) {
-    
     ifstream partialBenchmarkResultsFile;
     partialBenchmarkResultsFile = openFile(partialBenchmarkResultsFileName);
     if(!partialBenchmarkResultsFile.is_open()) {
@@ -783,7 +778,6 @@ void runBenchmark(SearchMode mode, string imageFolderPath) {
 
 
 int main(int argc, char const *argv[]) {
-    
     // Build and save file for a set of images
     // Usage: --build path_to_images images_extension
     if (strcmp(argv[1], "--build") == 0) {
