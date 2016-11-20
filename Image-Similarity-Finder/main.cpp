@@ -6,6 +6,9 @@
 //  Copyright © 2016 Lucas Alves Sobrinho. All rights reserved.
 //
 
+//	To compile on Linux distributions run:
+//	$ g++ main.cpp -o [program_name] `pkg-config --cflags --libs opencv` -std=c++11
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui.hpp>
 #include <iostream>
@@ -799,13 +802,11 @@ int main(int argc, char const *argv[]) {
             string imageFolderPath = argv[2];
             string imageExtension = argv[3];
             
-            vector<string> fileNames {"DEBUG_normalizedHistogram.txt", "DEBUG_normalizedPercentile.txt", "features.txt", "DEBUG_histogramLBP.txt"};
-            ofstream outputFileHistogram, outputFilePercentile, outputFileFeatures, outputFileHistogramLBP;
+            string featuresFileName = "features.txt";
+            vector<string> fileNames {featuresFileName};
+            ofstream outputFileFeatures;
             removeOldFiles(&fileNames);
-            outputFileHistogram.open(fileNames.at(0), ios::app);
-            outputFilePercentile.open(fileNames.at(1), ios::app);
-            outputFileFeatures.open(fileNames.at(2), ios::app);
-            outputFileHistogramLBP.open(fileNames.at(3), ios::app);
+            outputFileFeatures.open(featuresFileName, ios::app);
             
             for (int image = 0; image < numberOfImages; image++) {
                 oss << imageFolderPath << image << "." << imageExtension;
@@ -813,15 +814,10 @@ int main(int argc, char const *argv[]) {
                 currentImage = cvLoadImage(imagePath.c_str(), CV_LOAD_IMAGE_COLOR);
                 
                 buildColorPercentile(&histogram, &percentile, currentImage, &imageDivisions, &sc);
-                
-                saveFile(&histogram, outputFileHistogram, &image);
-                saveFile(&percentile, outputFilePercentile, &image);
-                
                 buildColorFeatureVector(&percentile, &colorFeatureVector);
                 
                 currentImageGrayscale = convertToGrayscale(currentImage);
                 buildLBPHistogram(&histogramLBP, currentImageGrayscale, &imageDivisions, &sc);
-                saveLBPFile(&histogramLBP, outputFileHistogramLBP, &image);
                 
                 saveFeaturesFile(&colorFeatureVector, &histogramLBP, outputFileFeatures, &image);
                 
@@ -833,9 +829,6 @@ int main(int argc, char const *argv[]) {
                 oss.str(string());
             }
             
-            outputFileHistogram.close();
-            outputFilePercentile.close();
-            outputFileHistogramLBP.close();
             outputFileFeatures.close();
             
         } else {
@@ -889,18 +882,3 @@ int main(int argc, char const *argv[]) {
     
     return 1;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
